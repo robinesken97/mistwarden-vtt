@@ -33,6 +33,16 @@ Mistwarden ist ein selbst gehostetes, schlankes Virtual Tabletop (AGPL-3.0). Die
 - Automatisierte Tests für Rechteprüfung, Synchronisation und Polygon-Operationen.
 - Manueller Gerätetest nach jedem Schritt: iPad 6, iPad Air 3, MacBook mit Safari.
 
+### Ausnahme bis zur ersten Session (Entscheidung vom 22.10.2026)
+
+Die iPads stehen erst zur ersten Spielsession zur Verfügung. Bis dahin gilt:
+
+- Stufe 1 wird komplett gebaut; der Test auf echten iPads findet beim ersten Spielen statt. Owlbear Rodeo liegt als Backup für den Spieltag bereit.
+- Features gelten bis dahin als „fertig bis auf Gerätetest“. Punkt 1 der Definition of Done wird nachgeholt, nicht gestrichen.
+- Ersatzweise nach jedem Schritt prüfen: iPad-Simulator mit iPadOS 17 (Xcode; erreicht `localhost` direkt) für Rendering, Touch und Hintergrund/Reconnect, dazu Safari auf dem Mac.
+- Der Simulator bildet den Speicher des iPad 6 nicht ab. Deshalb Speicher konservativ planen: festes Texturbudget, Kartenstufen nach abgefragter maximaler Texturgröße, nie die volle Auflösung als eine Textur.
+- HTTPS im LAN (Schritt 9) muss vor dem Spieltag stehen, sonst laufen PWA und Service Worker auf den iPads nicht.
+
 ## Veröffentlichung, Lizenz und Repository
 
 - Öffentliches Repository `mistwarden-vtt` auf GitHub. Lizenz: AGPL-3.0, LICENSE-Datei ab dem ersten Commit. Alle Abhängigkeiten müssen AGPL-kompatibel sein (MIT, BSD, Apache-2.0, Boost u. ä.); neue Abhängigkeiten vor Aufnahme auf ihre Lizenz prüfen.

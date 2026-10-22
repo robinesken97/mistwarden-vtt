@@ -1,0 +1,20 @@
+{
+	"name": "@mistwarden/client",
+	"version": "0.0.0",
+	"private": true,
+	"license": "AGPL-3.0-only",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview",
+		"typecheck": "tsc -p ."
+	},
+	"dependencies": {
+		"@mistwarden/protocol": "^0.0.0"
+	},
+	"devDependencies": {
+		"@mistwarden/server": "^0.0.0",
+		"vite": "^8.3.5"
+	}
+}
