@@ -1,0 +1,61 @@
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Datenbank (SQLite inkl. WAL-Dateien und Backups) ---
+*.sqlite
+*.sqlite3
+*.db
+*.sqlite-wal
+*.sqlite-shm
+*.db-wal
+*.db-shm
+data/
+backups/
+
+# --- Uploads, Karten, Assets (lizenzierte Inhalte gehören nie ins Repo) ---
+uploads/
+assets-store/
+maps/
+*.dd2vtt
+*.uvtt
+
+# --- Eigene Testkarten für den Auto-Fog-Prototyp (nur lokal) ---
+autofog/testmaps/
+autofog/output/
+
+# --- Node / Build ---
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.vite/
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# --- Python (Auto-Fog, Stufe 3) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# --- Lokale TLS-Zertifikate für HTTPS in der Entwicklung ---
+*.pem
+*.key
+*.crt
+certs/
+
+# --- Editor / Betriebssystem ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# --- Claude Code (lokale Einstellungen) ---
+.claude/settings.local.json
