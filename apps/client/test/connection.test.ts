@@ -44,6 +44,8 @@ function connect(
 	const c = new SyncConnection({
 		url: room.url,
 		token,
+		// Die GM wählt den Raum; Spieler sind an ihren Raum gebunden.
+		...(token === room.gm ? { roomId: room.roomId } : {}),
 		maxBackoffMs: 200,
 		...opts,
 	});
@@ -61,10 +63,19 @@ async function until(cond: () => boolean, timeoutMs = 3000): Promise<void> {
 }
 
 const scene = (name: string) =>
-	({ op: "create", kind: "scene", id: randomUUID(), data: { name } }) as const;
+	({
+		op: "create",
+		kind: "scene",
+		id: randomUUID(),
+		data: { name, order: 1 },
+	}) as const;
 
+/** Namen aller Szenen außer der Anfangsszene „Szene 1“. */
 const names = (c: SyncConnection) =>
-	[...c.entities.values()].map((e) => e.data.name).sort();
+	[...c.entities.values()]
+		.filter((e) => e.kind === "scene" && e.data.name !== "Szene 1")
+		.map((e) => e.data.name)
+		.sort();
 
 describe("SyncConnection", () => {
 	it("spiegelt Änderungen der GM bei den Spielern", async () => {
@@ -73,10 +84,12 @@ describe("SyncConnection", () => {
 		await until(() => gm.status === "online" && p1.status === "online");
 		expect(p1.identity).toEqual({ role: "player", playerId: room.p1.id });
 
-		expect(await gm.send(scene("Burg"))).toBe(1);
-		await until(() => p1.entities.size === 1);
+		const v = room.baseVersion;
+		expect(await gm.send(scene("Burg"))).toBe(v + 1);
+		await until(() => names(p1).length === 1);
 		expect(names(p1)).toEqual(["Burg"]);
-		expect(p1.version).toBe(1);
+		expect(p1.version).toBe(v + 1);
+		expect(p1.roomName).toBe("Testraum");
 	});
 
 	it("meldet abgelehnte Aktionen", async () => {
@@ -90,15 +103,15 @@ describe("SyncConnection", () => {
 		const p1 = connect(room.p1.token, { WebSocket: TestSocket });
 		await until(() => gm.status === "online" && p1.status === "online");
 		await gm.send(scene("Vorher"));
-		await until(() => p1.entities.size === 1);
+		await until(() => names(p1).length === 1);
 
 		TestSocket.last().deaf = true; // nichts mehr verarbeiten, wie bei Displaysperre
 		await gm.send(scene("Verpasst"));
 		TestSocket.last().close();
 		await until(() => p1.status === "offline");
-		await until(() => p1.status === "online" && p1.entities.size === 2);
+		await until(() => p1.status === "online" && names(p1).length === 2);
 		expect(names(p1)).toEqual(["Verpasst", "Vorher"]);
-		expect(p1.version).toBe(2);
+		expect(p1.version).toBe(room.baseVersion + 2);
 	});
 
 	it("sendet Aktionen ohne Bestätigung nach Reconnect erneut, ohne Doppelung", async () => {
@@ -111,9 +124,9 @@ describe("SyncConnection", () => {
 		await new Promise((r) => setTimeout(r, 50));
 		TestSocket.last().close();
 
-		expect(await pending).toBe(1);
+		expect(await pending).toBe(room.baseVersion + 1);
 		expect(names(gm)).toEqual(["Einmal"]);
-		expect(gm.version).toBe(1);
+		expect(gm.version).toBe(room.baseVersion + 1);
 	});
 
 	it("hält Aktionen zurück, solange keine Verbindung besteht", async () => {
@@ -122,8 +135,8 @@ describe("SyncConnection", () => {
 		gm.stop();
 		const pending = gm.send(scene("Offline angelegt"));
 		gm.start();
-		expect(await pending).toBe(1);
-		await until(() => gm.entities.size === 1);
+		expect(await pending).toBe(room.baseVersion + 1);
+		await until(() => names(gm).length === 1);
 	});
 
 	it("erkennt stumme Verbindungen und verbindet selbst neu", async () => {
@@ -139,7 +152,7 @@ describe("SyncConnection", () => {
 		const dead = TestSocket.last();
 		dead.deaf = true;
 		await gm.send(scene("Nach dem Verstummen"));
-		await until(() => TestSocket.last() !== dead && p1.entities.size === 1);
+		await until(() => TestSocket.last() !== dead && names(p1).length === 1);
 	});
 
 	it("gibt bei ungültiger Sitzung auf", async () => {

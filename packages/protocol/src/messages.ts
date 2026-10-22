@@ -41,6 +41,8 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
 		type: z.literal("hello"),
 		protocol: z.literal(PROTOCOL_VERSION),
 		token: z.string().min(1).max(200),
+		/** Raum, den die GM betreten will; bei Spielern optional (ergibt sich aus der Sitzung). */
+		roomId: IdSchema.optional(),
 		/** Zuletzt gesehene Raumversion; null holt den kompletten Stand. */
 		lastVersion: z.number().int().nonnegative().nullable(),
 	}),
@@ -69,7 +71,13 @@ export type ErrorCode =
 	| "hello_timeout";
 
 export type ServerMessage =
-	| { type: "welcome"; roomId: string; identity: Identity; version: number }
+	| {
+			type: "welcome";
+			roomId: string;
+			roomName: string;
+			identity: Identity;
+			version: number;
+	  }
 	| { type: "snapshot"; version: number; entities: Entity[] }
 	/** version ist die Raumversion nach diesen Änderungen, auch wenn verdeckte fehlen. */
 	| { type: "changes"; version: number; changes: Change[] }

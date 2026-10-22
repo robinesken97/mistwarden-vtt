@@ -24,6 +24,8 @@ export type ConnectionStatus =
 export interface ConnectionOptions {
 	url: string;
 	token: string;
+	/** Raum, den die GM betreten will; bei Spielern ergibt er sich aus der Sitzung. */
+	roomId?: string;
 	/** Austauschbar für Tests in Node. */
 	WebSocket?: typeof WebSocket;
 	/** Spätestens nach dieser Stille gilt die Verbindung als tot. */
@@ -60,9 +62,12 @@ export class SyncConnection {
 	readonly entities = new Map<string, Entity>();
 	version: number | null = null;
 	identity: Identity | null = null;
+	roomName: string | null = null;
 	status: ConnectionStatus = "offline";
 
-	readonly #opts: Required<Omit<ConnectionOptions, "WebSocket">>;
+	readonly #opts: Required<Omit<ConnectionOptions, "WebSocket" | "roomId">> & {
+		roomId: string | undefined;
+	};
 	readonly #WebSocket: typeof WebSocket;
 	readonly #listeners = new Set<() => void>();
 	readonly #pending = new Map<string, Pending>();
@@ -80,6 +85,7 @@ export class SyncConnection {
 		this.#opts = {
 			url: opts.url,
 			token: opts.token,
+			roomId: opts.roomId,
 			staleAfterMs: opts.staleAfterMs ?? 25_000,
 			pingEveryMs: opts.pingEveryMs ?? 10_000,
 			maxBackoffMs: opts.maxBackoffMs ?? 10_000,
@@ -149,6 +155,7 @@ export class SyncConnection {
 				type: "hello",
 				protocol: PROTOCOL_VERSION,
 				token: this.#opts.token,
+				...(this.#opts.roomId ? { roomId: this.#opts.roomId } : {}),
 				lastVersion: this.version,
 			});
 		};
@@ -175,6 +182,7 @@ export class SyncConnection {
 		switch (msg.type) {
 			case "welcome":
 				this.identity = msg.identity;
+				this.roomName = msg.roomName;
 				return;
 			case "snapshot":
 				this.entities.clear();

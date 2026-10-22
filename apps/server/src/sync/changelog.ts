@@ -9,7 +9,7 @@ import {
 	type RejectReason,
 } from "@mistwarden/protocol";
 import type { Db } from "../db/connection.ts";
-import { canWrite } from "./permissions.ts";
+import { checkWrite } from "./permissions.ts";
 import { canSee, type StoredChange, type StoredEntity } from "./visibility.ts";
 
 /** Liegt ein Client weiter zurück, bekommt er den kompletten Stand statt des Logs. */
@@ -84,6 +84,10 @@ export class ChangeLog {
 		};
 	}
 
+	exists(roomId: string): boolean {
+		return this.#stmts.roomVersion.get(roomId) !== undefined;
+	}
+
 	version(roomId: string): number {
 		const row = this.#stmts.roomVersion.get(roomId);
 		if (!row) throw new Error(`Raum ${roomId} existiert nicht`);
@@ -142,9 +146,22 @@ export class ChangeLog {
 				}
 			}
 
-			if (!canWrite(identity, action.kind, { op: action.op, before, after })) {
-				return { status: "rejected", reason: "forbidden" };
-			}
+			const verdict = checkWrite(identity, action.kind, {
+				op: action.op,
+				id: action.id,
+				before,
+				after,
+				lookup: (kind, id) => {
+					const r = this.#stmts.getEntity.get(roomId, kind, id);
+					return (
+						r && {
+							data: parseData(r.data),
+							audience: parseAudience(r.audience),
+						}
+					);
+				},
+			});
+			if (verdict !== "ok") return { status: "rejected", reason: verdict };
 
 			const bumped = this.#stmts.bumpVersion.get(roomId);
 			if (!bumped) throw new Error(`Raum ${roomId} existiert nicht`);

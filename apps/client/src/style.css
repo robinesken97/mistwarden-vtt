@@ -121,3 +121,67 @@ button.secondary {
 	color: var(--muted);
 	font-size: 0.9rem;
 }
+
+input[type="password"] {
+	font: inherit;
+	min-height: 44px;
+	padding: 0 0.75rem;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	background: transparent;
+	color: inherit;
+	flex: 1;
+	min-width: 10rem;
+}
+
+button:disabled {
+	opacity: 0.5;
+}
+
+h2 {
+	font-size: 1.1rem;
+	margin: 1.5rem 0 0.5rem;
+}
+
+.error {
+	color: var(--bad);
+}
+
+.active-scene {
+	font-size: 1.1rem;
+}
+
+.badge {
+	display: inline-block;
+	margin-left: 0.5rem;
+	padding: 0 0.4rem;
+	border-radius: 4px;
+	font-size: 0.8rem;
+	background: var(--accent);
+	color: #fff;
+	vertical-align: middle;
+}
+
+.badge.muted {
+	background: var(--line);
+	color: var(--fg);
+}
+
+.swatch {
+	display: inline-block;
+	width: 1rem;
+	height: 1rem;
+	border-radius: 50%;
+}
+
+.link-box {
+	display: flex;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+.link-box input {
+	flex: 1;
+	min-width: 12rem;
+	font-size: 0.85rem;
+}

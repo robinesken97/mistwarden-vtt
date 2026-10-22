@@ -19,17 +19,37 @@ export type Audience = z.infer<typeof AudienceSchema>;
 
 export const AUDIENCE_ALL: Audience = { type: "all" };
 
-// Szenen werden in Schritt 2 um Grid, Karte usw. erweitert.
+// Szenen werden in Schritt 3 um Karte und Grid erweitert.
 export const SceneSchema = z.strictObject({
 	name: z.string().trim().min(1).max(100),
+	/** Reihenfolge in der Szenenliste. */
+	order: z.number().int().min(0).max(1_000_000_000),
 });
+export type SceneData = z.infer<typeof SceneSchema>;
 
-export const EntityKindSchema = z.enum(["scene"]);
+/** Genau ein Objekt pro Raum mit der ID ROOM_STATE_ID. */
+export const RoomStateSchema = z.strictObject({
+	/** Szene, die alle Spieler sehen. Muss existieren und für alle sichtbar sein. */
+	activeSceneId: IdSchema.nullable(),
+});
+export type RoomStateData = z.infer<typeof RoomStateSchema>;
+export const ROOM_STATE_ID = "state";
+
+/** Spieler eines Raums; die ID ist die Spieler-ID der Sitzung. */
+export const PlayerSchema = z.strictObject({
+	name: z.string().trim().min(1).max(32),
+	color: z.string().regex(/^#[0-9a-f]{6}$/i),
+});
+export type PlayerData = z.infer<typeof PlayerSchema>;
+
+export const EntityKindSchema = z.enum(["scene", "roomState", "player"]);
 export type EntityKind = z.infer<typeof EntityKindSchema>;
 
 /** Schema der Nutzdaten pro Objektart; der Server prüft jeden Stand dagegen. */
 export const entitySchemas: Record<EntityKind, z.ZodType<EntityData>> = {
 	scene: SceneSchema,
+	roomState: RoomStateSchema,
+	player: PlayerSchema,
 };
 
 export type EntityData = Record<string, unknown>;

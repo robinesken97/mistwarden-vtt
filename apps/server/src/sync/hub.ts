@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
 	type Action,
 	type Change,
@@ -10,8 +11,8 @@ import {
 } from "@mistwarden/protocol";
 import type { WebSocket, WebSocketServer } from "ws";
 import type { Db } from "../db/connection.ts";
-import { findSession } from "../rooms.ts";
-import { ChangeLog } from "./changelog.ts";
+import { findSession, getRoom } from "../rooms.ts";
+import type { ChangeLog } from "./changelog.ts";
 import {
 	canSee,
 	filterChange,
@@ -41,12 +42,31 @@ export class Hub {
 	readonly #heartbeat: NodeJS.Timeout;
 	readonly #wss: WebSocketServer;
 
-	constructor(db: Db, wss: WebSocketServer) {
+	constructor(db: Db, wss: WebSocketServer, changelog: ChangeLog) {
 		this.#db = db;
 		this.#wss = wss;
-		this.#changelog = new ChangeLog(db);
+		this.#changelog = changelog;
 		wss.on("connection", (ws) => this.#onConnection(ws));
 		this.#heartbeat = setInterval(() => this.#checkAlive(), HEARTBEAT_MS);
+	}
+
+	/**
+	 * Führt eine Aktion serverseitig mit GM-Rechten aus (z. B. beim Anlegen eines
+	 * Raums oder Beitritt eines Spielers) und verteilt sie an alle Verbundenen.
+	 */
+	applySystem(roomId: string, action: Action): void {
+		const result = this.#changelog.apply(
+			roomId,
+			{ role: "gm" },
+			randomUUID(),
+			action,
+		);
+		if (result.status === "rejected") {
+			throw new Error(`Systemaktion abgelehnt: ${result.reason}`);
+		}
+		if (result.status === "applied") {
+			this.#broadcast(roomId, result.version, result.changes);
+		}
 	}
 
 	close(): void {
@@ -88,7 +108,7 @@ export class Hub {
 					return;
 				}
 				clearTimeout(helloTimer);
-				conn = this.#hello(ws, msg.token, msg.lastVersion);
+				conn = this.#hello(ws, msg.token, msg.roomId, msg.lastVersion);
 				return;
 			}
 			if (!conn) {
@@ -103,23 +123,41 @@ export class Hub {
 	#hello(
 		ws: WebSocket,
 		token: string,
+		requestedRoomId: string | undefined,
 		lastVersion: number | null,
 	): Connection | undefined {
 		const session = findSession(this.#db, token);
-		if (!session) {
-			sendError(ws, "unauthorized", "Sitzung ungültig");
+		// Spieler sind an ihren Raum gebunden; die GM wählt den Raum.
+		const roomId = session?.roomId ?? requestedRoomId;
+		const room = roomId === undefined ? undefined : getRoom(this.#db, roomId);
+		if (
+			!session ||
+			!room ||
+			(requestedRoomId !== undefined && requestedRoomId !== room.id)
+		) {
+			sendError(
+				ws,
+				"unauthorized",
+				"Sitzung ungültig oder kein Zugang zum Raum",
+			);
 			ws.close(CLOSE_UNAUTHORIZED);
 			return undefined;
 		}
-		const { roomId, identity } = session;
-		const version = this.#changelog.version(roomId);
-		send(ws, { type: "welcome", roomId, identity, version });
+		const { identity } = session;
+		const version = this.#changelog.version(room.id);
+		send(ws, {
+			type: "welcome",
+			roomId: room.id,
+			roomName: room.name,
+			identity,
+			version,
+		});
 
 		const missed =
-			lastVersion === null ? null : this.#changelog.since(roomId, lastVersion);
+			lastVersion === null ? null : this.#changelog.since(room.id, lastVersion);
 		if (missed === null) {
 			const entities = this.#changelog
-				.entities(roomId)
+				.entities(room.id)
 				.filter((e) => canSee(identity, e.audience))
 				.map((e) => toWireEntity(identity, e));
 			send(ws, { type: "snapshot", version, entities });
@@ -132,13 +170,13 @@ export class Hub {
 		}
 
 		// Alles synchron: zwischen Nachholen und Registrieren kann keine Änderung durchrutschen.
-		const conn: Connection = { ws, roomId, identity, alive: true };
-		let room = this.#rooms.get(roomId);
-		if (!room) {
-			room = new Set();
-			this.#rooms.set(roomId, room);
+		const conn: Connection = { ws, roomId: room.id, identity, alive: true };
+		let conns = this.#rooms.get(room.id);
+		if (!conns) {
+			conns = new Set();
+			this.#rooms.set(room.id, conns);
 		}
-		room.add(conn);
+		conns.add(conn);
 		return conn;
 	}
 

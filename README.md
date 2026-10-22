@@ -2,7 +2,7 @@
 
 Ein selbst gehostetes, schlankes Virtual Tabletop für die eigene Runde: Karten, Tokens, Fog und Würfel im Browser, ohne Upload-Limits und ohne Abo. Die Daten bleiben auf dem eigenen Server.
 
-> **Status:** frühe Entwicklung (Stufe 1, Schritt 1: Projektgerüst, Datenbank und Synchronisation). Noch nicht spielbar.
+> **Status:** frühe Entwicklung (Stufe 1, Schritt 2: Räume, GM-Login, Spieler-Link, Szenen). Noch nicht spielbar – Karten und Tokens folgen.
 
 Ziele, Umfang und Architektur stehen in [SPEC.md](SPEC.md).
 
@@ -12,11 +12,18 @@ Voraussetzung: Node.js 24 LTS.
 
 ```bash
 npm ci
-cp .env.example .env
-npm run dev:seed      # legt einen Testraum an und gibt Sitzungs-Tokens aus
+cp .env.example .env  # GM_PASSWORD eintragen (mindestens 10 Zeichen)
 npm run dev:server    # App-Server auf 127.0.0.1:3000
-npm run dev:client    # Vite-Entwicklungsserver mit Proxy für /ws
+npm run dev:client    # Vite-Entwicklungsserver mit Proxy für /api und /ws
 ```
+
+Dann `http://localhost:5173` öffnen, mit dem GM-Passwort anmelden, einen Raum anlegen und den Spieler-Link in einem zweiten Browser bzw. privaten Fenster öffnen.
+
+### Zugang
+
+- **Spielleitung:** ein Passwort für die ganze Installation (`GM_PASSWORD`). Damit lassen sich Räume anlegen und alle Räume betreten.
+- **Spieler:** treten über den Spieler-Link `…/join#<token>` mit ihrem Namen bei, ohne Account. Der Token steht hinter `#` und landet deshalb in keinem Server- oder Proxy-Log. Die Spielleitung kann den Link jederzeit neu erzeugen; wer schon beigetreten ist, bleibt drin.
+- Sitzungen liegen im Browser (`localStorage`) und überstehen ein Neuladen.
 
 Weitere Befehle: `npm test`, `npm run typecheck`, `npm run check` (Lint und Format), `npm run build`.
 

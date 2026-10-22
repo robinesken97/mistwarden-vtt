@@ -3,16 +3,18 @@ import {
 	type Action,
 	type Audience,
 	CLOSE_UNAUTHORIZED,
-	PROTOCOL_VERSION,
+	type Entity,
 } from "@mistwarden/protocol";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { RawClient, startTestRoom, type TestRoom } from "./helpers.ts";
 
 let room: TestRoom;
+let v: number;
 const clients: RawClient[] = [];
 
 beforeEach(async () => {
 	room = await startTestRoom();
+	v = room.baseVersion;
 });
 
 afterEach(async () => {
@@ -20,8 +22,17 @@ afterEach(async () => {
 	await room.close();
 });
 
+/** Verbindet als GM (mit Raumwahl) oder Spieler und wartet auf den Anfangszustand. */
 async function join(token: string, lastVersion: number | null = null) {
-	const c = await RawClient.join(room.url, token, lastVersion);
+	const roomId = token === room.gm ? room.roomId : undefined;
+	const c = await RawClient.join(room.url, token, { roomId, lastVersion });
+	clients.push(c);
+	return c;
+}
+
+/** Öffnet ohne auf den Anfangszustand zu warten (für Tests der Anmeldung selbst). */
+async function open() {
+	const c = await RawClient.open(room.url);
 	clients.push(c);
 	return c;
 }
@@ -40,27 +51,38 @@ const createScene = (name: string, audience?: Audience) =>
 		op: "create",
 		kind: "scene",
 		id: randomUUID(),
-		data: { name },
+		data: { name, order: 1 },
 		...(audience ? { audience } : {}),
 	}) satisfies Action;
 
+const names = (entities: Entity[], kind = "scene") =>
+	entities.filter((e) => e.kind === kind).map((e) => e.data.name);
+
 describe("Anmeldung", () => {
 	it("weist ungültige Sitzungen ab", async () => {
-		const c = await RawClient.open(room.url);
-		clients.push(c);
-		c.send({
-			type: "hello",
-			protocol: PROTOCOL_VERSION,
-			token: "falsch",
-			lastVersion: null,
-		});
+		const c = await open();
+		c.hello("falsch");
 		expect((await c.next("error")).code).toBe("unauthorized");
 		expect(await c.closed).toBe(CLOSE_UNAUTHORIZED);
 	});
 
+	it("GM muss einen existierenden Raum angeben", async () => {
+		const ohne = await open();
+		ohne.hello(room.gm);
+		expect(await ohne.closed).toBe(CLOSE_UNAUTHORIZED);
+		const falsch = await open();
+		falsch.hello(room.gm, { roomId: "gibt-es-nicht" });
+		expect(await falsch.closed).toBe(CLOSE_UNAUTHORIZED);
+	});
+
+	it("Spieler kommen nur in ihren eigenen Raum", async () => {
+		const c = await open();
+		c.hello(room.p1.token, { roomId: "anderer-raum" });
+		expect(await c.closed).toBe(CLOSE_UNAUTHORIZED);
+	});
+
 	it("nimmt vor der Anmeldung keine Aktionen an", async () => {
-		const c = await RawClient.open(room.url);
-		clients.push(c);
+		const c = await open();
 		c.send({ type: "action", actionId: "a1", action: createScene("X") });
 		expect((await c.next("error")).code).toBe("protocol");
 	});
@@ -79,22 +101,22 @@ describe("Anmeldung", () => {
 		await gm.next("pong");
 	});
 
-	it("liefert Identität und leeren Anfangszustand", async () => {
-		const c = await RawClient.open(room.url);
-		clients.push(c);
-		c.send({
-			type: "hello",
-			protocol: PROTOCOL_VERSION,
-			token: room.p1.token,
-			lastVersion: null,
-		});
+	it("liefert Identität, Raumname und Anfangszustand des neuen Raums", async () => {
+		const c = await open();
+		c.hello(room.p1.token);
 		const welcome = await c.next("welcome");
-		expect(welcome.identity).toEqual({ role: "player", playerId: room.p1.id });
-		expect(welcome.roomId).toBe(room.roomId);
-		expect(await c.next("snapshot")).toMatchObject({
-			version: 0,
-			entities: [],
+		expect(welcome).toMatchObject({
+			identity: { role: "player", playerId: room.p1.id },
+			roomId: room.roomId,
+			roomName: "Testraum",
+			version: v,
 		});
+		const snap = await c.next("snapshot");
+		expect(names(snap.entities)).toEqual(["Szene 1"]);
+		expect(names(snap.entities, "player")).toEqual(["Eins", "Zwei"]);
+		const state = snap.entities.find((e) => e.kind === "roomState");
+		const scene = snap.entities.find((e) => e.kind === "scene");
+		expect(state?.data.activeSceneId).toBe(scene?.id);
 	});
 });
 
@@ -104,19 +126,22 @@ describe("Synchronisation", () => {
 		const p1 = await join(room.p1.token);
 		const p2 = await join(room.p2.token);
 
-		const action = createScene("Dorf Barovia");
-		expect(await act(gm, action)).toMatchObject({ type: "ack", version: 1 });
+		const action = createScene("Dorf am Fluss");
+		expect(await act(gm, action)).toMatchObject({
+			type: "ack",
+			version: v + 1,
+		});
 
 		for (const c of [gm, p1, p2]) {
 			const msg = await c.next("changes");
-			expect(msg.version).toBe(1);
+			expect(msg.version).toBe(v + 1);
 			expect(msg.changes).toEqual([
 				expect.objectContaining({
 					op: "upsert",
-					version: 1,
+					version: v + 1,
 					entity: expect.objectContaining({
 						id: action.id,
-						data: { name: "Dorf Barovia" },
+						data: { name: "Dorf am Fluss", order: 1 },
 					}),
 				}),
 			]);
@@ -130,7 +155,7 @@ describe("Synchronisation", () => {
 			const ack = await act(gm, createScene(name));
 			versions.push(ack.type === "ack" ? ack.version : -1);
 		}
-		expect(versions).toEqual([1, 2, 3]);
+		expect(versions).toEqual([v + 1, v + 2, v + 3]);
 	});
 
 	it("wendet ein erneut gesendetes actionId nur einmal an", async () => {
@@ -139,11 +164,11 @@ describe("Synchronisation", () => {
 		const action = createScene("Einmal");
 		expect(await act(gm, action, "dup-1")).toMatchObject({
 			type: "ack",
-			version: 1,
+			version: v + 1,
 		});
 		expect(await act(gm, action, "dup-1")).toMatchObject({
 			type: "ack",
-			version: 1,
+			version: v + 1,
 		});
 		await p1.next("changes");
 		expect((await p1.drain()).filter((m) => m.type === "changes")).toHaveLength(
@@ -153,14 +178,17 @@ describe("Synchronisation", () => {
 
 	it("prüft Daten gegen das Schema", async () => {
 		const gm = await join(room.gm);
-		const bad = { ...createScene("x"), data: { name: "" } } satisfies Action;
+		const bad = {
+			...createScene("x"),
+			data: { name: "", order: 0 },
+		} satisfies Action;
 		expect(await act(gm, bad)).toMatchObject({
 			type: "reject",
 			reason: "invalid",
 		});
 		const extra = {
 			...createScene("x"),
-			data: { name: "ok", hack: 1 },
+			data: { name: "ok", order: 0, hack: 1 },
 		} satisfies Action;
 		expect(await act(gm, extra)).toMatchObject({
 			type: "reject",
@@ -218,9 +246,27 @@ describe("Rechte", () => {
 		).toMatchObject({ reason: "forbidden" });
 		expect(
 			await act(p1, { op: "delete", kind: "scene", id: scene.id }),
-		).toMatchObject({
-			reason: "forbidden",
-		});
+		).toMatchObject({ reason: "forbidden" });
+	});
+
+	it("Spieler dürfen weder Szene wechseln noch Spieler ändern", async () => {
+		const p1 = await join(room.p1.token);
+		expect(
+			await act(p1, {
+				op: "update",
+				kind: "roomState",
+				id: "state",
+				patch: { activeSceneId: null },
+			}),
+		).toMatchObject({ reason: "forbidden" });
+		expect(
+			await act(p1, {
+				op: "update",
+				kind: "player",
+				id: room.p2.id,
+				patch: { name: "Gekapert" },
+			}),
+		).toMatchObject({ reason: "forbidden" });
 	});
 
 	it("verdeckte Objekte gelten für Spieler als nicht vorhanden", async () => {
@@ -230,9 +276,99 @@ describe("Rechte", () => {
 		await act(gm, secret);
 		expect(
 			await act(p1, { op: "delete", kind: "scene", id: secret.id }),
-		).toMatchObject({
-			reason: "not_found",
+		).toMatchObject({ reason: "not_found" });
+	});
+});
+
+describe("Szenenwechsel", () => {
+	async function activeSceneOf(c: RawClient): Promise<string> {
+		const snap = c.received.find((m) => m.type === "snapshot");
+		const state =
+			snap?.type === "snapshot"
+				? snap.entities.find((e) => e.kind === "roomState")
+				: undefined;
+		return state?.data.activeSceneId as string;
+	}
+
+	const activate = (sceneId: string | null) =>
+		({
+			op: "update",
+			kind: "roomState",
+			id: "state",
+			patch: { activeSceneId: sceneId },
+		}) satisfies Action;
+
+	it("alle Clients folgen dem Szenenwechsel der GM", async () => {
+		const gm = await join(room.gm);
+		const p1 = await join(room.p1.token);
+		const p2 = await join(room.p2.token);
+		const scene = createScene("Burg auf dem Felsen");
+		await act(gm, scene);
+		await p1.next("changes");
+		await p2.next("changes");
+
+		const t0 = performance.now();
+		expect(await act(gm, activate(scene.id))).toMatchObject({ type: "ack" });
+		for (const c of [p1, p2]) {
+			const msg = await c.next("changes", 1000);
+			expect(msg.changes[0]).toMatchObject({
+				op: "upsert",
+				entity: { kind: "roomState", data: { activeSceneId: scene.id } },
+			});
+		}
+		expect(performance.now() - t0).toBeLessThan(1000);
+	});
+
+	it("verdeckte oder unbekannte Szenen lassen sich nicht aktivieren", async () => {
+		const gm = await join(room.gm);
+		const secret = createScene("Vorbereitet", { type: "gm" });
+		await act(gm, secret);
+		expect(await act(gm, activate(secret.id))).toMatchObject({
+			reason: "invalid",
 		});
+		expect(await act(gm, activate("gibt-es-nicht"))).toMatchObject({
+			reason: "invalid",
+		});
+	});
+
+	it("die aktive Szene lässt sich weder löschen noch verbergen", async () => {
+		const gm = await join(room.gm);
+		const active = await activeSceneOf(gm);
+		expect(
+			await act(gm, { op: "delete", kind: "scene", id: active }),
+		).toMatchObject({ reason: "invalid" });
+		expect(
+			await act(gm, {
+				op: "update",
+				kind: "scene",
+				id: active,
+				audience: { type: "gm" },
+			}),
+		).toMatchObject({ reason: "invalid" });
+		// Umbenennen bleibt erlaubt.
+		expect(
+			await act(gm, {
+				op: "update",
+				kind: "scene",
+				id: active,
+				patch: { name: "Dorf" },
+			}),
+		).toMatchObject({ type: "ack" });
+	});
+
+	it("der Raumzustand lässt sich weder löschen noch doppelt anlegen", async () => {
+		const gm = await join(room.gm);
+		expect(
+			await act(gm, { op: "delete", kind: "roomState", id: "state" }),
+		).toMatchObject({ reason: "invalid" });
+		expect(
+			await act(gm, {
+				op: "create",
+				kind: "roomState",
+				id: "zweiter",
+				data: { activeSceneId: null },
+			}),
+		).toMatchObject({ reason: "invalid" });
 	});
 });
 
@@ -297,7 +433,7 @@ describe("Sichtbarkeit", () => {
 			audience: { type: "gm" },
 		});
 		expect((await p1.next("changes")).changes).toEqual([
-			{ version: 3, op: "delete", kind: "scene", id: scene.id },
+			{ version: v + 3, op: "delete", kind: "scene", id: scene.id },
 		]);
 	});
 
@@ -331,18 +467,12 @@ describe("Reconnect", () => {
 			patch: { name: "Umbenannt" },
 		});
 
-		const p1 = await RawClient.open(room.url);
-		clients.push(p1);
-		p1.send({
-			type: "hello",
-			protocol: PROTOCOL_VERSION,
-			token: room.p1.token,
-			lastVersion: 1,
-		});
+		const p1 = await open();
+		p1.hello(room.p1.token, { lastVersion: v + 1 });
 		await p1.next("welcome");
 		const catchUp = await p1.next("changes");
-		expect(catchUp.version).toBe(3);
-		expect(catchUp.changes.map((c) => c.version)).toEqual([2, 3]);
+		expect(catchUp.version).toBe(v + 3);
+		expect(catchUp.changes.map((c) => c.version)).toEqual([v + 2, v + 3]);
 	});
 
 	it("filtert beim Nachholen nach Sichtbarkeit, inklusive Verbergen", async () => {
@@ -357,18 +487,12 @@ describe("Reconnect", () => {
 			audience: { type: "gm" },
 		});
 
-		const p1 = await RawClient.open(room.url);
-		clients.push(p1);
-		p1.send({
-			type: "hello",
-			protocol: PROTOCOL_VERSION,
-			token: room.p1.token,
-			lastVersion: 1,
-		});
+		const p1 = await open();
+		p1.hello(room.p1.token, { lastVersion: v + 1 });
 		await p1.next("welcome");
 		const catchUp = await p1.next("changes");
 		expect(catchUp.changes).toEqual([
-			{ version: 3, op: "delete", kind: "scene", id: shown.id },
+			{ version: v + 3, op: "delete", kind: "scene", id: shown.id },
 		]);
 		expect(p1.raw.join("\n")).not.toContain("Bleibt geheim");
 	});
@@ -376,45 +500,25 @@ describe("Reconnect", () => {
 	it("liefert einen Snapshot bei unbekannter Version", async () => {
 		const gm = await join(room.gm);
 		await act(gm, createScene("A"));
-		const p1 = await RawClient.open(room.url);
-		clients.push(p1);
-		p1.send({
-			type: "hello",
-			protocol: PROTOCOL_VERSION,
-			token: room.p1.token,
-			lastVersion: 99,
-		});
+		const p1 = await open();
+		p1.hello(room.p1.token, { lastVersion: 999 });
 		await p1.next("welcome");
 		const snap = await p1.next("snapshot");
-		expect(snap.version).toBe(1);
-		expect(snap.entities).toHaveLength(1);
+		expect(snap.version).toBe(v + 1);
+		expect(names(snap.entities)).toEqual(["Szene 1", "A"]);
 	});
 
 	it("überlebt einen Serverneustart ohne Datenverlust", async () => {
 		const gm = await join(room.gm);
 		await act(gm, createScene("Persistent"));
-		const databasePath = room.server.db.name;
 		for (const c of clients.splice(0)) c.close();
-		await room.server.close();
+		await room.restart();
 
-		const { startServer } = await import("../src/app.ts");
-		const restarted = await startServer({
-			host: "127.0.0.1",
-			port: 0,
-			databasePath,
-		});
-		room.server = restarted;
-		room.url = `ws://127.0.0.1:${restarted.port}/ws`;
-		const p1 = await RawClient.open(room.url);
-		clients.push(p1);
-		p1.send({
-			type: "hello",
-			protocol: PROTOCOL_VERSION,
-			token: room.p1.token,
-			lastVersion: null,
-		});
-		await p1.next("welcome");
-		const snap = await p1.next("snapshot");
-		expect(snap.entities.map((e) => e.data.name)).toEqual(["Persistent"]);
+		const p1 = await join(room.p1.token);
+		const snap = p1.received.find((m) => m.type === "snapshot");
+		expect(snap?.type === "snapshot" && names(snap.entities)).toEqual([
+			"Szene 1",
+			"Persistent",
+		]);
 	});
 });

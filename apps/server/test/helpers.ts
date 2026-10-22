@@ -4,52 +4,109 @@ import { join } from "node:path";
 import {
 	type ClientMessage,
 	PROTOCOL_VERSION,
+	type RoomSummary,
 	type ServerMessage,
 } from "@mistwarden/protocol";
 import WebSocket from "ws";
-import {
-	createPlayer,
-	createRoom,
-	createSession,
-	type RunningServer,
-	startServer,
-} from "../src/app.ts";
+import { type RunningServer, startServer } from "../src/app.ts";
+
+export const TEST_GM_PASSWORD = "test-passwort-123";
 
 export interface TestRoom {
 	server: RunningServer;
+	/** HTTP-Basis, z. B. http://127.0.0.1:1234 */
+	http: string;
+	/** WebSocket-Adresse */
 	url: string;
+	dbPath: string;
 	roomId: string;
 	gm: string;
 	p1: { id: string; token: string };
 	p2: { id: string; token: string };
+	/** Raumversion nach dem Anlegen (Szene, Raumzustand, zwei Spieler). */
+	baseVersion: number;
+	/** Startet den Server mit derselben Datenbank neu. */
+	restart(opts?: { gmPassword?: string }): Promise<void>;
 	close(): Promise<void>;
 }
 
-/** Server auf freiem Port mit echter SQLite-Datei (WAL) und einem Raum: GM + 2 Spieler. */
-export async function startTestRoom(): Promise<TestRoom> {
-	const dir = mkdtempSync(join(tmpdir(), "mistwarden-test-"));
-	const server = await startServer({
+export async function startTestServer(
+	dbPath: string,
+	gmPassword = TEST_GM_PASSWORD,
+) {
+	return startServer({
 		host: "127.0.0.1",
 		port: 0,
-		databasePath: join(dir, "test.sqlite"),
+		databasePath: dbPath,
+		gmPassword,
+		trustProxy: false,
 	});
-	const { db } = server;
-	const roomId = createRoom(db, "Testraum");
-	const gm = createSession(db, roomId, { role: "gm" });
-	const player = (name: string) => {
-		const id = createPlayer(db, roomId, name, "#888888");
-		return {
-			id,
-			token: createSession(db, roomId, { role: "player", playerId: id }),
-		};
+}
+
+/** JSON-Aufruf der HTTP-API; liefert Status und Antwort. */
+export async function api<T = unknown>(
+	base: string,
+	path: string,
+	opts: { method?: string; token?: string; body?: unknown } = {},
+): Promise<{ status: number; body: T }> {
+	const res = await fetch(base + path, {
+		method: opts.method ?? (opts.body === undefined ? "GET" : "POST"),
+		headers: {
+			...(opts.body === undefined
+				? {}
+				: { "content-type": "application/json" }),
+			...(opts.token ? { authorization: `Bearer ${opts.token}` } : {}),
+		},
+		body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+	});
+	return { status: res.status, body: (await res.json()) as T };
+}
+
+/**
+ * Server auf freiem Port mit echter SQLite-Datei (WAL). Raum und Spieler entstehen
+ * wie im Betrieb über die HTTP-API: GM-Login, Raum anlegen, zwei Spieler treten bei.
+ */
+export async function startTestRoom(): Promise<TestRoom> {
+	const dir = mkdtempSync(join(tmpdir(), "mistwarden-test-"));
+	const dbPath = join(dir, "test.sqlite");
+	const server = await startTestServer(dbPath);
+	const http = `http://127.0.0.1:${server.port}`;
+
+	const login = await api<{ token: string }>(http, "/api/gm/login", {
+		body: { password: TEST_GM_PASSWORD },
+	});
+	const gm = login.body.token;
+	const created = await api<RoomSummary>(http, "/api/rooms", {
+		token: gm,
+		body: { name: "Testraum" },
+	});
+	const joinAs = async (displayName: string) => {
+		const res = await api<{ token: string; playerId: string }>(
+			http,
+			"/api/join",
+			{
+				body: { linkToken: created.body.playerLinkToken, displayName },
+			},
+		);
+		return { id: res.body.playerId, token: res.body.token };
 	};
+
 	const room: TestRoom = {
 		server,
+		http,
 		url: `ws://127.0.0.1:${server.port}/ws`,
-		roomId,
+		dbPath,
+		roomId: created.body.id,
 		gm,
-		p1: player("Eins"),
-		p2: player("Zwei"),
+		p1: await joinAs("Eins"),
+		p2: await joinAs("Zwei"),
+		baseVersion: 4,
+		async restart(opts = {}) {
+			await room.server.close();
+			room.server = await startTestServer(dbPath, opts.gmPassword);
+			room.http = `http://127.0.0.1:${room.server.port}`;
+			room.url = `ws://127.0.0.1:${room.server.port}/ws`;
+		},
 		async close() {
 			await room.server.close();
 			rmSync(dir, { recursive: true, force: true });
@@ -94,13 +151,26 @@ export class RawClient {
 	static async join(
 		url: string,
 		token: string,
-		lastVersion: number | null = null,
+		opts: { roomId?: string; lastVersion?: number | null } = {},
 	): Promise<RawClient> {
 		const c = await RawClient.open(url);
-		c.send({ type: "hello", protocol: PROTOCOL_VERSION, token, lastVersion });
+		c.hello(token, opts);
 		await c.next("welcome");
 		await c.nextOf(["snapshot", "changes"]);
 		return c;
+	}
+
+	hello(
+		token: string,
+		opts: { roomId?: string; lastVersion?: number | null } = {},
+	): void {
+		this.send({
+			type: "hello",
+			protocol: PROTOCOL_VERSION,
+			token,
+			...(opts.roomId ? { roomId: opts.roomId } : {}),
+			lastVersion: opts.lastVersion ?? null,
+		});
 	}
 
 	send(msg: ClientMessage | Record<string, unknown>): void {

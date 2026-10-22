@@ -1,11 +1,17 @@
--- Grundschema: Räume, Spieler, Sitzungen, synchronisierte Objekte und Änderungslog.
+-- Grundschema: Einstellungen, Räume, Spieler, Sitzungen, synchronisierte Objekte und Änderungslog.
 
+-- Installationsweite Werte, z. B. der Argon2-Hash des GM-Passworts.
+CREATE TABLE settings (
+	key TEXT PRIMARY KEY,
+	value TEXT NOT NULL
+) STRICT;
+
+-- Die GM hat Zugang zu allen Räumen der Installation (ein GM-Passwort, siehe GM_PASSWORD).
 CREATE TABLE rooms (
 	id TEXT PRIMARY KEY,
 	name TEXT NOT NULL,
-	-- Wird in Schritt 2 (GM-Login, Spieler-Link) befüllt.
-	gm_password_hash TEXT,
-	player_link_token_hash TEXT UNIQUE,
+	-- Geheimer Teil des Spieler-Links; im Klartext, damit die GM den Link jederzeit wieder anzeigen kann.
+	player_link_token TEXT NOT NULL UNIQUE,
 	-- Fortlaufende Versionsnummer; jede Änderung im Raum erhöht sie um 1.
 	version INTEGER NOT NULL DEFAULT 0,
 	created_at INTEGER NOT NULL
@@ -22,14 +28,18 @@ CREATE TABLE players (
 CREATE INDEX players_room ON players(room_id);
 
 -- Sitzungs-Token liegen nur als SHA-256-Hash vor.
+-- GM-Sitzungen gelten für die ganze Installation, Spieler-Sitzungen für genau einen Raum.
 CREATE TABLE sessions (
 	token_hash TEXT PRIMARY KEY,
-	room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
 	role TEXT NOT NULL CHECK (role IN ('gm', 'player')),
+	room_id TEXT REFERENCES rooms(id) ON DELETE CASCADE,
 	player_id TEXT REFERENCES players(id) ON DELETE CASCADE,
 	created_at INTEGER NOT NULL,
 	last_seen_at INTEGER,
-	CHECK ((role = 'gm') = (player_id IS NULL))
+	CHECK (
+		(role = 'gm' AND room_id IS NULL AND player_id IS NULL)
+		OR (role = 'player' AND room_id IS NOT NULL AND player_id IS NOT NULL)
+	)
 ) STRICT;
 
 -- Aktueller Stand aller synchronisierten Objekte (Szenen, später Tokens, Fog-Formen, …).
