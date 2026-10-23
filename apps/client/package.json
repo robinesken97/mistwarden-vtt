@@ -11,7 +11,8 @@
 		"typecheck": "tsc -p ."
 	},
 	"dependencies": {
-		"@mistwarden/protocol": "^0.0.0"
+		"@mistwarden/protocol": "^0.0.0",
+		"pixi.js": "^8.22.0"
 	},
 	"devDependencies": {
 		"@mistwarden/server": "^0.0.0",

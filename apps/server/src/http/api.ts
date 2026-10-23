@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
 	type ApiErrorCode,
+	type AssetMeta,
 	CreateRoomRequestSchema,
 	GmLoginRequestSchema,
 	type GmLoginResponse,
@@ -10,8 +11,10 @@ import {
 	LinkRequestSchema,
 	type RoomSummary,
 	type SessionResponse,
+	UPLOAD_CONTENT_TYPES,
 } from "@mistwarden/protocol";
 import type { z } from "zod";
+import { AssetError, type AssetStore } from "../assets/store.ts";
 import { verifyGmPassword } from "../auth/gm-password.ts";
 import type { Db } from "../db/connection.ts";
 import {
@@ -33,6 +36,8 @@ const MAX_BODY_BYTES = 16 * 1024;
 export interface ApiDeps {
 	db: Db;
 	applySystem: ApplySystemAction;
+	assets: AssetStore;
+	uploadMaxBytes: number;
 	/** X-Forwarded-For nur auswerten, wenn ein Reverse Proxy davor sitzt. */
 	trustProxy: boolean;
 }
@@ -127,6 +132,39 @@ export function createApi(deps: ApiDeps) {
 		return { roomId: room.id, roomName: room.name };
 	});
 
+	route("GET", "/api/assets", (ctx): AssetMeta[] => {
+		ctx.gm();
+		return deps.assets.list();
+	});
+
+	// Bild als Rohdaten im Body (kein Formular); Name optional im Header X-Asset-Name.
+	route("POST", "/api/assets", async (ctx): Promise<AssetMeta> => {
+		ctx.gm();
+		const type = ctx.req.headers["content-type"]?.split(";")[0]?.trim();
+		if (!UPLOAD_CONTENT_TYPES.includes(type as never)) {
+			throw new HttpError(415, "unsupported");
+		}
+		const length = Number(ctx.req.headers["content-length"]);
+		if (length > deps.uploadMaxBytes) throw new HttpError(413, "too_large");
+		const rawName = ctx.req.headers["x-asset-name"];
+		let name = "Bild";
+		try {
+			if (typeof rawName === "string") name = decodeURIComponent(rawName);
+		} catch {
+			// unlesbarer Name: Standard behalten
+		}
+		try {
+			return await deps.assets.ingest(ctx.req, name);
+		} catch (err) {
+			if (err instanceof AssetError) {
+				throw err.code === "unsupported"
+					? new HttpError(415, "unsupported")
+					: new HttpError(413, "too_large");
+			}
+			throw err;
+		}
+	});
+
 	route("POST", "/api/join", async (ctx): Promise<JoinResponse> => {
 		if (!joinLimit.take(ctx.ip)) {
 			throw new HttpError(429, "too_many_requests");
@@ -159,6 +197,8 @@ export function createApi(deps: ApiDeps) {
 			const ctx = makeCtx(req, url, match, deps);
 			sendJson(res, 200, await match.handler(ctx));
 		} catch (err) {
+			// Ungelesenen Body (z. B. abgelehnter Upload) nicht abwarten: Verbindung danach schließen.
+			if (!req.complete) res.shouldKeepAlive = false;
 			if (err instanceof HttpError) {
 				sendJson(res, err.status, { error: err.code });
 			} else {

@@ -141,7 +141,7 @@ describe("Synchronisation", () => {
 					version: v + 1,
 					entity: expect.objectContaining({
 						id: action.id,
-						data: { name: "Dorf am Fluss", order: 1 },
+						data: expect.objectContaining({ name: "Dorf am Fluss", order: 1 }),
 					}),
 				}),
 			]);

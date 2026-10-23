@@ -2,7 +2,7 @@
 
 Ein selbst gehostetes, schlankes Virtual Tabletop für die eigene Runde: Karten, Tokens, Fog und Würfel im Browser, ohne Upload-Limits und ohne Abo. Die Daten bleiben auf dem eigenen Server.
 
-> **Status:** frühe Entwicklung (Stufe 1, Schritt 2: Räume, GM-Login, Spieler-Link, Szenen). Noch nicht spielbar – Karten und Tokens folgen.
+> **Status:** frühe Entwicklung (Stufe 1, Schritt 3: Karten mit Grid). Noch nicht spielbar – Tokens, Fog und Würfel folgen.
 
 Ziele, Umfang und Architektur stehen in [SPEC.md](SPEC.md).
 
@@ -24,6 +24,13 @@ Dann `http://localhost:5173` öffnen, mit dem GM-Passwort anmelden, einen Raum a
 - **Spielleitung:** ein Passwort für die ganze Installation (`GM_PASSWORD`). Damit lassen sich Räume anlegen und alle Räume betreten.
 - **Spieler:** treten über den Spieler-Link `…/join#<token>` mit ihrem Namen bei, ohne Account. Der Token steht hinter `#` und landet deshalb in keinem Server- oder Proxy-Log. Die Spielleitung kann den Link jederzeit neu erzeugen; wer schon beigetreten ist, bleibt drin.
 - Sitzungen liegen im Browser (`localStorage`) und überstehen ein Neuladen.
+
+### Karten
+
+- Die Spielleitung lädt Karten als PNG, JPEG oder WebP hoch (Größe über `UPLOAD_MAX_MB`, höchstens 30 000 px Kantenlänge). Der Server prüft den Dateityp am Inhalt und kodiert das Bild neu: als Pyramide aus WebP-Kacheln (1024 px), jede Stufe halb so groß wie die vorige. Das Original bleibt in `ASSET_STORAGE_PATH` erhalten, wird aber nie ausgeliefert.
+- Kacheln sind ohne Anmeldung unter einer zufälligen Asset-ID abrufbar und werden lange zwischengespeichert. Kartenbilder gelten nicht als geheim (siehe unten).
+- Der Browser lädt nur die sichtbaren Kacheln in der passenden Stufe und hält ein festes Grafikspeicher-Budget ein (Touch-Geräte 96 MiB, sonst 256 MiB). Die volle Auflösung liegt nie als eine Textur im Speicher.
+- Das Grid (Quadrate oder Hexfelder) wird per Shader gezeichnet; Größe und Versatz stellt die Spielleitung in Kartenpixeln ein.
 
 Weitere Befehle: `npm test`, `npm run typecheck`, `npm run check` (Lint und Format), `npm run build`.
 

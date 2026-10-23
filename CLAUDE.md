@@ -39,7 +39,8 @@ Die iPads stehen erst zur ersten Spielsession zur Verfügung. Bis dahin gilt:
 
 - Stufe 1 wird komplett gebaut; der Test auf echten iPads findet beim ersten Spielen statt. Owlbear Rodeo liegt als Backup für den Spieltag bereit.
 - Features gelten bis dahin als „fertig bis auf Gerätetest“. Punkt 1 der Definition of Done wird nachgeholt, nicht gestrichen.
-- Ersatzweise nach jedem Schritt prüfen: iPad-Simulator mit iPadOS 17 (Xcode; erreicht `localhost` direkt) für Rendering, Touch und Hintergrund/Reconnect, dazu Safari auf dem Mac.
+- Ersatzweise nach jedem Schritt prüfen: iPad-Simulator (Xcode; erreicht `localhost` direkt) für Touch-Gesten, Seitenverhalten, WebGL2 und Hintergrund/Reconnect, dazu Safari auf dem Mac.
+- Xcode 27 bietet nur noch Simulatoren mit iPadOS 27 an, weder iPadOS 17/18 noch das iPad 6 als Gerät (Stand 23.10.2026). Der Simulator prüft also nicht, ob etwas in Safari 17 fehlt. Deshalb: Build-Ziel `safari17` beibehalten und keine Web-APIs nutzen, die Safari 17 nicht kann (vor Einsatz neuer APIs die Unterstützung ab Safari 17 prüfen).
 - Der Simulator bildet den Speicher des iPad 6 nicht ab. Deshalb Speicher konservativ planen: festes Texturbudget, Kartenstufen nach abgefragter maximaler Texturgröße, nie die volle Auflösung als eine Textur.
 - HTTPS im LAN (Schritt 9) muss vor dem Spieltag stehen, sonst laufen PWA und Service Worker auf den iPads nicht.
 

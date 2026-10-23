@@ -13,6 +13,7 @@
 	"dependencies": {
 		"@mistwarden/protocol": "^0.0.0",
 		"better-sqlite3": "^13.0.3",
+		"sharp": "^0.35.5",
 		"ws": "^8.22.0",
 		"zod": "^4.6.7"
 	},

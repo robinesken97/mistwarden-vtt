@@ -1,10 +1,12 @@
-import type {
-	ApiErrorCode,
-	GmLoginResponse,
-	JoinResponse,
-	LinkInfoResponse,
-	RoomSummary,
-	SessionResponse,
+import {
+	type ApiErrorCode,
+	type AssetMeta,
+	assetMetaUrl,
+	type GmLoginResponse,
+	type JoinResponse,
+	type LinkInfoResponse,
+	type RoomSummary,
+	type SessionResponse,
 } from "@mistwarden/protocol";
 
 export class ApiError extends Error {
@@ -42,7 +44,46 @@ async function call<T>(
 	return body as T;
 }
 
+/** Lädt ein Bild als Rohdaten hoch; der Server erzeugt daraus die Kachelpyramide. */
+async function uploadAsset(token: string, file: File): Promise<AssetMeta> {
+	let res: Response;
+	try {
+		res = await fetch("/api/assets", {
+			method: "POST",
+			headers: {
+				"content-type": file.type,
+				"x-asset-name": encodeURIComponent(file.name.replace(/\.[^.]+$/, "")),
+				authorization: `Bearer ${token}`,
+			},
+			body: file,
+		});
+	} catch {
+		throw new ApiError(0, "network");
+	}
+	const body = (await res.json().catch(() => ({}))) as { error?: ApiErrorCode };
+	if (!res.ok) throw new ApiError(res.status, body.error ?? "internal");
+	return body as AssetMeta;
+}
+
+const metaCache = new Map<string, Promise<AssetMeta>>();
+
+/** Metadaten eines Bildes (öffentlich, unveränderlich, daher zwischengespeichert). */
+export function assetMeta(id: string): Promise<AssetMeta> {
+	let meta = metaCache.get(id);
+	if (!meta) {
+		meta = fetch(assetMetaUrl(id)).then((res) => {
+			if (!res.ok) throw new ApiError(res.status, "not_found");
+			return res.json() as Promise<AssetMeta>;
+		});
+		meta.catch(() => metaCache.delete(id));
+		metaCache.set(id, meta);
+	}
+	return meta;
+}
+
 export const api = {
+	uploadAsset,
+	assets: (token: string) => call<AssetMeta[]>("/api/assets", { token }),
 	gmLogin: (password: string) =>
 		call<GmLoginResponse>("/api/gm/login", { body: { password } }),
 	logout: (token: string) => call("/api/logout", { token, body: {} }),
@@ -76,6 +117,10 @@ export function errorText(err: unknown): string {
 			return "Server nicht erreichbar.";
 		case "bad_request":
 			return "Eingabe ungültig.";
+		case "unsupported":
+			return "Dateiformat nicht unterstützt (PNG, JPEG oder WebP).";
+		case "too_large":
+			return "Datei oder Bild zu groß.";
 		default:
 			return "Unerwarteter Fehler.";
 	}

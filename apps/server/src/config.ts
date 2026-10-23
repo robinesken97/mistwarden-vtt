@@ -6,6 +6,9 @@ const EnvSchema = z.object({
 	/** Öffentliche Adresse hinter dem Reverse Proxy; keine LAN-Annahmen im Code. */
 	PUBLIC_BASE_URL: z.url().optional(),
 	DATABASE_PATH: z.string().min(1).default("./data/mistwarden.sqlite"),
+	/** Ablage für Originale und Kacheln, z. B. ein Bind-Mount auf das NAS. */
+	ASSET_STORAGE_PATH: z.string().min(1).default("./data/assets"),
+	UPLOAD_MAX_MB: z.coerce.number().int().min(1).max(2000).default(200),
 	/** Pflicht, ohne Standardwert. Wird beim Start als Argon2-Hash gespeichert. */
 	GM_PASSWORD: z
 		.string({ error: "GM_PASSWORD muss gesetzt sein" })
@@ -19,6 +22,8 @@ export interface Config {
 	port: number;
 	publicBaseUrl: string | undefined;
 	databasePath: string;
+	assetStoragePath: string;
+	uploadMaxBytes: number;
 	gmPassword: string;
 	trustProxy: boolean;
 }
@@ -36,6 +41,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 		port: e.PORT,
 		publicBaseUrl: e.PUBLIC_BASE_URL,
 		databasePath: e.DATABASE_PATH,
+		assetStoragePath: e.ASSET_STORAGE_PATH,
+		uploadMaxBytes: e.UPLOAD_MAX_MB * 1024 * 1024,
 		gmPassword: e.GM_PASSWORD,
 		trustProxy: e.TRUST_PROXY,
 	};

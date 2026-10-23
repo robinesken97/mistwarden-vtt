@@ -1,6 +1,6 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
 	type ClientMessage,
 	PROTOCOL_VERSION,
@@ -11,6 +11,7 @@ import WebSocket from "ws";
 import { type RunningServer, startServer } from "../src/app.ts";
 
 export const TEST_GM_PASSWORD = "test-passwort-123";
+export const TEST_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
 
 export interface TestRoom {
 	server: RunningServer;
@@ -40,6 +41,8 @@ export async function startTestServer(
 		databasePath: dbPath,
 		gmPassword,
 		trustProxy: false,
+		assetStoragePath: join(dirname(dbPath), "assets"),
+		uploadMaxBytes: TEST_UPLOAD_MAX_BYTES,
 	});
 }
 

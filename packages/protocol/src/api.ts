@@ -53,6 +53,8 @@ export type ApiErrorCode =
 	| "not_found"
 	| "too_many_requests"
 	| "room_full"
+	| "unsupported"
+	| "too_large"
 	| "internal";
 
 export interface ApiErrorResponse {

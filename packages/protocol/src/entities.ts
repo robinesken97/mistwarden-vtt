@@ -19,11 +19,37 @@ export type Audience = z.infer<typeof AudienceSchema>;
 
 export const AUDIENCE_ALL: Audience = { type: "all" };
 
-// Szenen werden in Schritt 3 um Karte und Grid erweitert.
+/**
+ * Grid in Kartenpixeln (Stufe 0 der Karte). Die Karte liegt fest im Ursprung;
+ * das Grid wird an die Karte angepasst, nicht umgekehrt.
+ * - square: Quadrate mit Kantenlänge `size`
+ * - hexPointy: Hexfelder mit Spitze oben, Breite `size`
+ * - hexFlat: Hexfelder mit flacher Oberseite, Höhe `size`
+ */
+export const GridSchema = z.strictObject({
+	type: z.enum(["square", "hexPointy", "hexFlat"]),
+	size: z.number().min(8).max(2000),
+	offsetX: z.number().min(-4000).max(4000),
+	offsetY: z.number().min(-4000).max(4000),
+	visible: z.boolean(),
+});
+export type GridData = z.infer<typeof GridSchema>;
+
+export const DEFAULT_GRID: GridData = {
+	type: "square",
+	size: 100,
+	offsetX: 0,
+	offsetY: 0,
+	visible: true,
+};
+
 export const SceneSchema = z.strictObject({
 	name: z.string().trim().min(1).max(100),
 	/** Reihenfolge in der Szenenliste. */
 	order: z.number().int().min(0).max(1_000_000_000),
+	/** Asset-ID des Kartenbilds oder null für eine leere Szene. */
+	map: IdSchema.nullable().default(null),
+	grid: GridSchema.default(DEFAULT_GRID),
 });
 export type SceneData = z.infer<typeof SceneSchema>;
 
