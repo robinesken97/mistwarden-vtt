@@ -19,6 +19,7 @@ function meta(width: number, height: number): AssetMeta {
 		height,
 		tileSize: 1024,
 		levels: levelCount(width, height),
+		purpose: "map",
 		createdAt: 0,
 	};
 }

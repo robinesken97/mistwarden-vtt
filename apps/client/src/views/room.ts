@@ -1,5 +1,5 @@
 // Raumansicht: Spielfläche (PixiJS) über die ganze Seite, darüber eine Statusleiste und
-// ein Menü mit Spielern und – für die GM – Szenen, Karte, Grid und Spieler-Link.
+// ein Menü mit Spielern und – für die GM – Szenen, Karte, Grid, Tokens und Spieler-Link.
 import {
 	type Action,
 	type AssetMeta,
@@ -21,6 +21,7 @@ import {
 import type { Stage } from "../render/stage.ts";
 import { navigate } from "../router.ts";
 import { storage } from "../storage.ts";
+import { createTokenTools } from "./tokens.ts";
 
 const statusLabel = {
 	connecting: "Verbinde …",
@@ -101,6 +102,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		h("span", {}, statusDot, statusText),
 		sceneText,
 		backToActive,
+		h("span", { className: "hud-slot" }),
 		menuButton,
 	);
 	const error = errorLine();
@@ -144,6 +146,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	root.replaceChildren(
 		h("div", { className: "room" }, stageHost, stageMessage, hud, panel),
 	);
+	const roomEl = root.firstElementChild as HTMLElement;
 
 	const run = (action: Action): Promise<number | undefined> => {
 		error.show(null);
@@ -154,6 +157,22 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			return undefined;
 		});
 	};
+
+	// --- Tokens ---
+	const tokens = createTokenTools({
+		conn,
+		gmToken,
+		run,
+		displayedScene,
+		currentGrid,
+		viewCenter: () => stage?.viewCenter() ?? null,
+		changed: () => {
+			tokens.render();
+			stage?.setTokens(tokens.stageTokens());
+		},
+	});
+	hud.querySelector(".hud-slot")?.replaceWith(tokens.snapButton);
+	roomEl.append(tokens.bar);
 
 	// --- Daten aus dem gespiegelten Raumzustand ---
 	function entitiesOf(kind: Entity["kind"]): Entity[] {
@@ -299,7 +318,9 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	async function refreshAssets(): Promise<void> {
 		if (!gmToken) return;
 		try {
-			assetList = await api.assets(gmToken);
+			assetList = (await api.assets(gmToken)).filter(
+				(a) => a.purpose !== "token",
+			);
 			renderAssetSelect();
 		} catch (err) {
 			if (err instanceof ApiError && err.status === 401) leaveAsGm();
@@ -516,6 +537,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				{ className: "hint" },
 				"Größe und Versatz in Kartenpixeln. Die Karte bleibt fest, das Grid wird an sie angepasst.",
 			),
+			tokens.gmSection,
 			h("h2", {}, "Spieler-Link"),
 			linkBox,
 			h(
@@ -544,7 +566,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 	// --- Spielfläche ---
 	import("../render/stage.ts")
-		.then(({ createStage }) => createStage(stageHost))
+		.then(({ createStage }) => createStage(stageHost, tokens.callbacks))
 		.then((s) => {
 			if (disposed) {
 				s.destroy();
@@ -560,6 +582,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 	function updateStage(): void {
 		if (!stage) return;
+		stage.setTokens(tokens.stageTokens());
 		const scene = displayedScene();
 		const request = ++stageRequest;
 		if (!scene) {
@@ -648,6 +671,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			syncGridInputs();
 		}
 
+		tokens.render();
 		updateStage();
 
 		if (conn.status === "unauthorized") {

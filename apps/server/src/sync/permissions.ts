@@ -3,8 +3,10 @@ import {
 	type EntityData,
 	type EntityKind,
 	type Identity,
+	PLAYER_TOKEN_FIELDS,
 	ROOM_STATE_ID,
 	type RoomStateData,
+	type TokenData,
 } from "@mistwarden/protocol";
 
 export interface EntityState {
@@ -52,6 +54,29 @@ const rules: Record<EntityKind, Rule> = {
 		if (activeSceneId !== null) {
 			const scene = req.lookup("scene", activeSceneId);
 			if (scene?.audience.type !== "all") return "invalid";
+		}
+		return "ok";
+	},
+
+	token: (identity, req) => {
+		const before = req.before?.data as TokenData | undefined;
+		const after = req.after?.data as TokenData | undefined;
+		// Ein Token wechselt nie die Szene.
+		if (before && after && before.sceneId !== after.sceneId) return "invalid";
+		if (isGm(identity)) return "ok";
+		// Spieler: nur eigene Tokens auf der Token-Ebene, nur Position und Drehung.
+		if (req.op !== "update" || !before || !after) return "forbidden";
+		if (before.ownerId !== identity.playerId || before.layer !== "tokens") {
+			return "forbidden";
+		}
+		const allowed = new Set<string>(PLAYER_TOKEN_FIELDS);
+		const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+		for (const key of keys) {
+			if (allowed.has(key)) continue;
+			const k = key as keyof TokenData;
+			if (JSON.stringify(before[k]) !== JSON.stringify(after[k])) {
+				return "forbidden";
+			}
 		}
 		return "ok";
 	},

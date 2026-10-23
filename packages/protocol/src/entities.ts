@@ -68,7 +68,39 @@ export const PlayerSchema = z.strictObject({
 });
 export type PlayerData = z.infer<typeof PlayerSchema>;
 
-export const EntityKindSchema = z.enum(["scene", "roomState", "player"]);
+/**
+ * Token oder Prop auf einer Szene. Position ist der Mittelpunkt in Kartenpixeln,
+ * Größe in Grid-Feldern. Die Sichtbarkeit leitet der Server aus Szene und `hidden` ab.
+ */
+export const TokenSchema = z.strictObject({
+	sceneId: IdSchema,
+	assetId: IdSchema,
+	x: z.number().min(-100_000).max(100_000),
+	y: z.number().min(-100_000).max(100_000),
+	size: z
+		.number()
+		.min(0.25)
+		.max(10)
+		.refine((n) => Number.isInteger(n * 4), "Vielfaches von 0,25"),
+	rotation: z.number().min(0).lt(360),
+	/** Spieler, der das Token bewegen darf; null = nur die GM. */
+	ownerId: IdSchema.nullable(),
+	layer: z.enum(["props", "tokens"]),
+	name: z.string().trim().max(40),
+	/** Für Spieler unsichtbar (Schritt 7); verdeckte Szenen verbergen ihre Tokens ohnehin. */
+	hidden: z.boolean().default(false),
+});
+export type TokenData = z.infer<typeof TokenSchema>;
+
+/** Felder, die Spieler an eigenen Tokens ändern dürfen. */
+export const PLAYER_TOKEN_FIELDS = ["x", "y", "rotation"] as const;
+
+export const EntityKindSchema = z.enum([
+	"scene",
+	"roomState",
+	"player",
+	"token",
+]);
 export type EntityKind = z.infer<typeof EntityKindSchema>;
 
 /** Schema der Nutzdaten pro Objektart; der Server prüft jeden Stand dagegen. */
@@ -76,6 +108,7 @@ export const entitySchemas: Record<EntityKind, z.ZodType<EntityData>> = {
 	scene: SceneSchema,
 	roomState: RoomStateSchema,
 	player: PlayerSchema,
+	token: TokenSchema,
 };
 
 export type EntityData = Record<string, unknown>;

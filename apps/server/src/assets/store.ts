@@ -4,7 +4,13 @@ import { mkdir, readdir, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { type AssetMeta, levelCount, TILE_SIZE } from "@mistwarden/protocol";
+import {
+	type AssetMeta,
+	type AssetPurpose,
+	levelCount,
+	TILE_SIZE,
+	TOKEN_MAX_EDGE,
+} from "@mistwarden/protocol";
 import sharp from "sharp";
 import type { Db } from "../db/connection.ts";
 
@@ -35,6 +41,7 @@ interface AssetRow {
 	height: number;
 	tile_size: number;
 	levels: number;
+	purpose: AssetPurpose;
 	created_at: number;
 }
 
@@ -46,6 +53,7 @@ function toMeta(r: AssetRow): AssetMeta {
 		height: r.height,
 		tileSize: r.tile_size,
 		levels: r.levels,
+		purpose: r.purpose,
 		createdAt: r.created_at,
 	};
 }
@@ -68,14 +76,20 @@ export class AssetStore {
 	}
 
 	/** Liest den Upload in eine temporäre Datei, prüft ihn und erzeugt die Kacheln. */
-	async ingest(input: Readable, name: string): Promise<AssetMeta> {
+	async ingest(
+		input: Readable,
+		name: string,
+		purpose: AssetPurpose = "map",
+	): Promise<AssetMeta> {
 		const id = randomUUID();
 		const dir = join(this.#root, id);
 		const upload = join(dir, "upload");
 		await mkdir(dir, { recursive: true });
 		try {
 			await this.#receive(input, upload);
-			const run = this.#queue.then(() => this.#process(id, dir, upload, name));
+			const run = this.#queue.then(() =>
+				this.#process(id, dir, upload, name, purpose),
+			);
 			this.#queue = run.catch(() => {});
 			return await run;
 		} catch (err) {
@@ -139,6 +153,7 @@ export class AssetStore {
 		dir: string,
 		upload: string,
 		name: string,
+		purpose: AssetPurpose,
 	): Promise<AssetMeta> {
 		// Dateityp aus dem Inhalt, nicht aus Endung oder Content-Type.
 		const meta = await sharp(upload, { limitInputPixels: false })
@@ -151,15 +166,23 @@ export class AssetStore {
 			throw new AssetError("unsupported");
 		// EXIF-Drehung berücksichtigen: Breite und Höhe nach dem Aufrichten.
 		const rotated = (meta.orientation ?? 1) >= 5;
-		const width = rotated ? meta.height : meta.width;
-		const height = rotated ? meta.width : meta.height;
-		if (width > MAX_EDGE || height > MAX_EDGE) {
+		const sourceWidth = rotated ? meta.height : meta.width;
+		const sourceHeight = rotated ? meta.width : meta.height;
+		if (sourceWidth > MAX_EDGE || sourceHeight > MAX_EDGE) {
 			throw new AssetError("too_many_pixels");
 		}
+		// Tokens werden verkleinert: höchstens 1 MiB Grafikspeicher pro Token-Bild.
+		const scale =
+			purpose === "token"
+				? Math.min(1, TOKEN_MAX_EDGE / Math.max(sourceWidth, sourceHeight))
+				: 1;
+		const width = Math.max(1, Math.round(sourceWidth * scale));
+		const height = Math.max(1, Math.round(sourceHeight * scale));
 
 		// Neu kodieren statt Originale auszuliefern; Metadaten (EXIF, GPS) fallen dabei weg.
 		await sharp(upload, { limitInputPixels: MAX_EDGE * MAX_EDGE })
 			.autoOrient()
+			.resize(width, height, { fit: "fill" })
 			.webp({ quality: WEBP_QUALITY })
 			.tile({ size: TILE_SIZE, overlap: 0, depth: "onetile", layout: "dz" })
 			.toFile(join(dir, "tiles"));
@@ -180,12 +203,13 @@ export class AssetStore {
 			height,
 			tile_size: TILE_SIZE,
 			levels,
+			purpose,
 			created_at: Date.now(),
 		};
 		this.#db
 			.prepare(
-				`INSERT INTO assets (id, name, width, height, tile_size, levels, original_ext, created_at)
-				 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+				`INSERT INTO assets (id, name, width, height, tile_size, levels, purpose, original_ext, created_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			)
 			.run(
 				row.id,
@@ -194,6 +218,7 @@ export class AssetStore {
 				height,
 				TILE_SIZE,
 				levels,
+				purpose,
 				ext,
 				row.created_at,
 			);

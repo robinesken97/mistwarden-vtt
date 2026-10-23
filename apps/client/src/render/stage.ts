@@ -8,7 +8,12 @@ import {
 	Texture,
 	type WebGLRenderer,
 } from "pixi.js";
-import { attachCameraControls, Camera } from "./camera.ts";
+import {
+	attachGestures,
+	browserScheduler,
+	GestureRecognizer,
+} from "../input/gestures.ts";
+import { attachWheelZoom, Camera } from "./camera.ts";
 import { GridLayer } from "./grid.ts";
 import { TileCache } from "./tile-cache.ts";
 import {
@@ -18,6 +23,21 @@ import {
 	type Rect,
 	type TileRef,
 } from "./tiles.ts";
+import { type StageToken, TokenLayer, TokenTextures } from "./tokens.ts";
+
+export type { StageToken } from "./tokens.ts";
+
+/** Rückmeldungen der Spielfläche an die Raumansicht. */
+export interface StageCallbacks {
+	/** Darf dieses Token gerade gezogen werden? */
+	canDrag(tokenId: string): boolean;
+	/** Antippen: Token auswählen bzw. Auswahl aufheben (null). */
+	select(tokenId: string | null): void;
+	/** Langes Drücken oder Rechtsklick; Bildschirmposition für ein Menü. */
+	context(tokenId: string | null, screen: { x: number; y: number }): void;
+	/** Token losgelassen; `free` = ohne Einrasten (Alt-Taste). */
+	drop(tokenId: string, world: { x: number; y: number }, free: boolean): void;
+}
 
 export interface StageScene {
 	/** Wechselt die ID, wird die Kamera neu auf die Szene ausgerichtet. */
@@ -28,6 +48,10 @@ export interface StageScene {
 
 export interface Stage {
 	setScene(scene: StageScene | null): void;
+	/** Tokens der angezeigten Szene in Zeichenreihenfolge. */
+	setTokens(tokens: StageToken[]): void;
+	/** Mitte des sichtbaren Bereichs in Weltkoordinaten. */
+	viewCenter(): { x: number; y: number };
 	/** Infos für Fehlersuche und Tests (Texturgröße, Budget, Speicher). */
 	info(): StageInfo;
 	destroy(): void;
@@ -51,7 +75,10 @@ const MAX_RESOLUTION = 2;
  * Spielfläche mit PixiJS (nur WebGL, kein WebGPU). Rendert nur bei Änderungen,
  * nicht in einer Dauerschleife – schont Akku und das Referenzgerät.
  */
-export async function createStage(host: HTMLElement): Promise<Stage> {
+export async function createStage(
+	host: HTMLElement,
+	callbacks: StageCallbacks,
+): Promise<Stage> {
 	const resolution = Math.min(window.devicePixelRatio || 1, MAX_RESOLUTION);
 	const app = new Application();
 	await app.init({
@@ -85,10 +112,13 @@ export async function createStage(host: HTMLElement): Promise<Stage> {
 	const tileLayer = new Container({ label: "map-tiles" });
 	const grid = new GridLayer();
 	mapLayer.addChild(overviewLayer, tileLayer, grid.mesh);
+	const textures = new TokenTextures(() => requestRender());
+	const propsLayer = new TokenLayer("props", textures);
+	const tokenLayer = new TokenLayer("tokens", textures);
 	world.addChild(
 		mapLayer,
-		new Container({ label: "props" }),
-		new Container({ label: "tokens" }),
+		propsLayer.container,
+		tokenLayer.container,
 		new Container({ label: "notes" }),
 		new Container({ label: "drawings" }),
 	);
@@ -109,8 +139,84 @@ export async function createStage(host: HTMLElement): Promise<Stage> {
 	let lastLevel: number | null = null;
 	let lastTileCount = 0;
 	let frame = 0;
+	let tokens: StageToken[] = [];
+	/** Laufender Zug: entweder ein Token oder die Karte (Kamera). */
+	let drag:
+		| {
+				type: "token";
+				id: string;
+				offsetX: number;
+				offsetY: number;
+				x: number;
+				y: number;
+		  }
+		| { type: "pan"; lastX: number; lastY: number }
+		| null = null;
 
-	const detachControls = attachCameraControls(canvas, camera, requestRender);
+	const hitTest = (sx: number, sy: number): string | null => {
+		const p = camera.screenToWorld(sx, sy);
+		return tokenLayer.hitTest(p.x, p.y) ?? propsLayer.hitTest(p.x, p.y);
+	};
+
+	const recognizer = new GestureRecognizer(
+		{
+			tap(x, y) {
+				callbacks.select(hitTest(x, y));
+			},
+			dragStart(x, y) {
+				const id = hitTest(x, y);
+				const token = id ? tokens.find((t) => t.id === id) : undefined;
+				if (id && token && callbacks.canDrag(id)) {
+					const p = camera.screenToWorld(x, y);
+					drag = {
+						type: "token",
+						id,
+						offsetX: p.x - token.x,
+						offsetY: p.y - token.y,
+						x: token.x,
+						y: token.y,
+					};
+				} else {
+					drag = { type: "pan", lastX: x, lastY: y };
+				}
+			},
+			dragMove(x, y) {
+				if (drag?.type === "token") {
+					const p = camera.screenToWorld(x, y);
+					drag.x = p.x - drag.offsetX;
+					drag.y = p.y - drag.offsetY;
+				} else if (drag?.type === "pan") {
+					camera.panBy(x - drag.lastX, y - drag.lastY);
+					drag.lastX = x;
+					drag.lastY = y;
+				}
+				requestRender();
+			},
+			dragEnd(_x, _y, altKey) {
+				const done = drag;
+				drag = null;
+				if (done?.type === "token") {
+					callbacks.drop(done.id, { x: done.x, y: done.y }, altKey);
+				}
+				requestRender();
+			},
+			dragCancel() {
+				drag = null;
+				requestRender();
+			},
+			context(x, y) {
+				callbacks.context(hitTest(x, y), { x, y });
+			},
+			pinch(midX, midY, factor, dx, dy) {
+				camera.panBy(dx, dy);
+				camera.zoomAt(midX, midY, factor);
+				requestRender();
+			},
+		},
+		browserScheduler,
+	);
+	const detachGestures = attachGestures(canvas, recognizer);
+	const detachWheel = attachWheelZoom(canvas, camera, requestRender);
 	app.renderer.on("resize", requestRender);
 
 	function requestRender(): void {
@@ -167,6 +273,18 @@ export async function createStage(host: HTMLElement): Promise<Stage> {
 				sprites.delete(key);
 			}
 		}
+
+		// Tokens; ein gerade gezogenes Token folgt dem Finger.
+		const shown =
+			drag?.type === "token"
+				? tokens.map((t) =>
+						drag?.type === "token" && t.id === drag.id
+							? { ...t, x: drag.x, y: drag.y }
+							: t,
+					)
+				: tokens;
+		propsLayer.set(shown.filter((t) => t.layer === "props"));
+		tokenLayer.set(shown.filter((t) => t.layer === "tokens"));
 
 		// Grid über der Karte; ohne Karte über dem sichtbaren Bereich.
 		const area = scene?.map ? sceneBounds(scene) : view;
@@ -225,6 +343,17 @@ export async function createStage(host: HTMLElement): Promise<Stage> {
 			}
 			requestRender();
 		},
+		setTokens(next) {
+			tokens = next;
+			// Token verschwunden (gelöscht, verborgen): laufenden Zug beenden.
+			const dragged = drag?.type === "token" ? drag.id : null;
+			if (dragged && !next.some((t) => t.id === dragged)) drag = null;
+			requestRender();
+		},
+		viewCenter() {
+			const { width, height } = viewSize();
+			return camera.screenToWorld(width / 2, height / 2);
+		},
 		info: () => ({
 			webgl2,
 			maxTextureSize,
@@ -235,8 +364,12 @@ export async function createStage(host: HTMLElement): Promise<Stage> {
 		}),
 		destroy() {
 			cancelAnimationFrame(frame);
-			detachControls();
+			detachGestures();
+			detachWheel();
 			cache.destroy();
+			propsLayer.destroy();
+			tokenLayer.destroy();
+			textures.destroy();
 			grid.destroy();
 			app.destroy(true, { children: true });
 		},

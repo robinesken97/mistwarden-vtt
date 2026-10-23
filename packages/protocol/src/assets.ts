@@ -5,6 +5,11 @@
 
 export const TILE_SIZE = 1024;
 
+/** Token-Bilder werden beim Upload auf diese Kantenlänge verkleinert (≤ 1 MiB Textur). */
+export const TOKEN_MAX_EDGE = 512;
+
+export type AssetPurpose = "map" | "token";
+
 export interface AssetMeta {
 	id: string;
 	name: string;
@@ -14,6 +19,7 @@ export interface AssetMeta {
 	tileSize: number;
 	/** Anzahl der Stufen; die gröbste (levels - 1) besteht aus genau einer Kachel. */
 	levels: number;
+	purpose: AssetPurpose;
 	createdAt: number;
 }
 

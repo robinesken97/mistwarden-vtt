@@ -55,6 +55,7 @@ class HttpError extends Error {
 interface Ctx {
 	req: IncomingMessage;
 	params: string[];
+	query: URLSearchParams;
 	body<S extends z.ZodType>(schema: S): Promise<z.infer<S>>;
 	session(): Session;
 	gm(): Session;
@@ -154,7 +155,8 @@ export function createApi(deps: ApiDeps) {
 			// unlesbarer Name: Standard behalten
 		}
 		try {
-			return await deps.assets.ingest(ctx.req, name);
+			const purpose = ctx.query.get("purpose") === "token" ? "token" : "map";
+			return await deps.assets.ingest(ctx.req, name, purpose);
 		} catch (err) {
 			if (err instanceof AssetError) {
 				throw err.code === "unsupported"
@@ -219,6 +221,7 @@ function makeCtx(
 	let session: Session | undefined;
 	const ctx: Ctx = {
 		req,
+		query: url.searchParams,
 		params: (route.pattern.exec(url.pathname) ?? [])
 			.slice(1)
 			.map(decodeURIComponent),

@@ -337,3 +337,41 @@ input.num {
 	color: inherit;
 	text-align: right;
 }
+
+/* --- Auswahlleiste für Tokens (unten, gut mit dem Daumen erreichbar) --- */
+
+.selection-bar {
+	position: absolute;
+	left: 50%;
+	bottom: max(0.75rem, env(safe-area-inset-bottom));
+	transform: translateX(-50%);
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem 0.75rem;
+	max-width: calc(100vw - 1.5rem);
+	padding: 0.5rem 0.75rem;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.selection-bar[hidden] {
+	display: none;
+}
+
+.bar-group {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	align-items: center;
+}
+
+.bar-name {
+	max-width: 12rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

@@ -45,10 +45,14 @@ async function call<T>(
 }
 
 /** Lädt ein Bild als Rohdaten hoch; der Server erzeugt daraus die Kachelpyramide. */
-async function uploadAsset(token: string, file: File): Promise<AssetMeta> {
+async function uploadAsset(
+	token: string,
+	file: File,
+	purpose: AssetMeta["purpose"] = "map",
+): Promise<AssetMeta> {
 	let res: Response;
 	try {
-		res = await fetch("/api/assets", {
+		res = await fetch(`/api/assets?purpose=${purpose}`, {
 			method: "POST",
 			headers: {
 				"content-type": file.type,

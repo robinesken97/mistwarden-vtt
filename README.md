@@ -2,7 +2,7 @@
 
 Ein selbst gehostetes, schlankes Virtual Tabletop für die eigene Runde: Karten, Tokens, Fog und Würfel im Browser, ohne Upload-Limits und ohne Abo. Die Daten bleiben auf dem eigenen Server.
 
-> **Status:** frühe Entwicklung (Stufe 1, Schritt 3: Karten mit Grid). Noch nicht spielbar – Tokens, Fog und Würfel folgen.
+> **Status:** frühe Entwicklung (Stufe 1, Schritt 4: Tokens). Noch nicht spielbar – Fog, Würfel, Ping und Messen folgen.
 
 Ziele, Umfang und Architektur stehen in [SPEC.md](SPEC.md).
 
@@ -31,6 +31,14 @@ Dann `http://localhost:5173` öffnen, mit dem GM-Passwort anmelden, einen Raum a
 - Kacheln sind ohne Anmeldung unter einer zufälligen Asset-ID abrufbar und werden lange zwischengespeichert. Kartenbilder gelten nicht als geheim (siehe unten).
 - Der Browser lädt nur die sichtbaren Kacheln in der passenden Stufe und hält ein festes Grafikspeicher-Budget ein (Touch-Geräte 96 MiB, sonst 256 MiB). Die volle Auflösung liegt nie als eine Textur im Speicher.
 - Das Grid (Quadrate oder Hexfelder) wird per Shader gezeichnet; Größe und Versatz stellt die Spielleitung in Kartenpixeln ein.
+
+### Tokens
+
+- Die Spielleitung lädt Token-Bilder hoch (auf 512 px verkleinert) und platziert sie als Token oder als Prop (Möbel, Türen, Deko). Größe in Feldern, Drehung, Besitzer und Ebene stellt sie in der Auswahlleiste ein.
+- Spieler bewegen und drehen nur ihre eigenen Tokens; alles andere prüft der Server. Props bewegt nur die Spielleitung, und nur wenn „Props sperren“ aus ist.
+- Tokens rasten am Grid ein (Quadrate: ungerade Größen in die Feldmitte, gerade auf den Kreuzungspunkt; Hex: Feldmitte). Freies Setzen: Alt-Taste beim Loslassen oder Schalter „Einrasten: aus“.
+- Bedienung: antippen bzw. klicken wählt aus, ziehen verschiebt das eigene Token, sonst die Karte; zwei Finger oder Mausrad zoomen; langes Drücken bzw. Rechtsklick öffnet die Auswahl.
+- Tokens einer verdeckten Szene sind für Spieler unsichtbar und werden ihnen nicht übertragen.
 
 Weitere Befehle: `npm test`, `npm run typecheck`, `npm run check` (Lint und Format), `npm run build`.
 

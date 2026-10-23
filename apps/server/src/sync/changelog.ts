@@ -7,6 +7,7 @@ import {
 	entitySchemas,
 	type Identity,
 	type RejectReason,
+	type TokenData,
 } from "@mistwarden/protocol";
 import type { Db } from "../db/connection.ts";
 import { checkWrite } from "./permissions.ts";
@@ -55,11 +56,14 @@ export class ChangeLog {
 			bumpVersion: db.prepare<[string], { version: number }>(
 				"UPDATE rooms SET version = version + 1 WHERE id = ? RETURNING version",
 			),
-			findAction: db.prepare<[string, string], { version: number }>(
-				"SELECT version FROM changes WHERE room_id = ? AND action_id = ? LIMIT 1",
+			findAction: db.prepare<[string, string], { version: number | null }>(
+				"SELECT MAX(version) AS version FROM changes WHERE room_id = ? AND action_id = ?",
 			),
 			getEntity: db.prepare<[string, string, string], EntityRow>(
 				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind = ? AND id = ?",
+			),
+			sceneTokens: db.prepare<[string, string], EntityRow>(
+				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind = 'token' AND json_extract(data, '$.sceneId') = ?",
 			),
 			allEntities: db.prepare<[string], EntityRow>(
 				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? ORDER BY version",
@@ -101,8 +105,8 @@ export class ChangeLog {
 		action: Action,
 	): ApplyResult {
 		return this.#db.transaction((): ApplyResult => {
-			const done = this.#stmts.findAction.get(roomId, actionId);
-			if (done) return { status: "duplicate", version: done.version };
+			const done = this.#stmts.findAction.get(roomId, actionId)?.version;
+			if (done != null) return { status: "duplicate", version: done };
 
 			const row = this.#stmts.getEntity.get(roomId, action.kind, action.id);
 			// Was ein Spieler nicht sehen darf, existiert für ihn nicht.
@@ -146,6 +150,23 @@ export class ChangeLog {
 				}
 			}
 
+			// Tokens: Sichtbarkeit wird aus Szene und `hidden` abgeleitet, nie direkt gesetzt.
+			if (action.kind === "token" && after) {
+				if (action.op !== "delete" && "audience" in action && action.audience) {
+					return { status: "rejected", reason: "invalid" };
+				}
+				const scene = this.#stmts.getEntity.get(
+					roomId,
+					"scene",
+					(after.data as TokenData).sceneId,
+				);
+				if (!scene) return { status: "rejected", reason: "invalid" };
+				after.audience = tokenAudience(
+					parseAudience(scene.audience),
+					after.data as TokenData,
+				);
+			}
+
 			const verdict = checkWrite(identity, action.kind, {
 				op: action.op,
 				id: action.id,
@@ -163,47 +184,107 @@ export class ChangeLog {
 			});
 			if (verdict !== "ok") return { status: "rejected", reason: verdict };
 
-			const bumped = this.#stmts.bumpVersion.get(roomId);
-			if (!bumped) throw new Error(`Raum ${roomId} existiert nicht`);
-			const version = bumped.version;
 			const prevAudience = row ? parseAudience(row.audience) : null;
-
-			if (after) {
-				this.#stmts.upsertEntity.run(
+			const changes = [
+				this.#write(
 					roomId,
+					actionId,
 					action.kind,
 					action.id,
-					JSON.stringify(after.data),
-					JSON.stringify(after.audience),
-					version,
-				);
-			} else {
-				this.#stmts.deleteEntity.run(roomId, action.kind, action.id);
+					after,
+					prevAudience,
+				),
+			];
+			if (action.kind === "scene") {
+				changes.push(...this.#cascadeScene(roomId, actionId, action.id, after));
 			}
-			this.#stmts.insertChange.run(
-				roomId,
-				version,
-				actionId,
-				after ? "upsert" : "delete",
-				action.kind,
-				action.id,
-				after ? JSON.stringify(after.data) : null,
-				after ? JSON.stringify(after.audience) : null,
-				prevAudience ? JSON.stringify(prevAudience) : null,
-				Date.now(),
-			);
-
-			const change: StoredChange = {
-				version,
-				op: after ? "upsert" : "delete",
-				kind: action.kind,
-				entityId: action.id,
-				data: after?.data ?? null,
-				audience: after?.audience ?? null,
-				prevAudience,
-			};
-			return { status: "applied", version, changes: [change] };
+			const last = changes[changes.length - 1] as StoredChange;
+			return { status: "applied", version: last.version, changes };
 		})();
+	}
+
+	/**
+	 * Zieht die Tokens einer Szene nach: Wird die Szene gelöscht, verschwinden ihre Tokens;
+	 * ändert sich ihre Sichtbarkeit, ändert sich die abgeleitete Sichtbarkeit der Tokens.
+	 */
+	#cascadeScene(
+		roomId: string,
+		actionId: string,
+		sceneId: string,
+		scene: { audience: Audience } | null,
+	): StoredChange[] {
+		const changes: StoredChange[] = [];
+		for (const row of this.#stmts.sceneTokens.all(roomId, sceneId)) {
+			const prev = parseAudience(row.audience);
+			if (!scene) {
+				changes.push(
+					this.#write(roomId, actionId, "token", row.id, null, prev),
+				);
+				continue;
+			}
+			const data = parseData(row.data);
+			const audience = tokenAudience(scene.audience, data as TokenData);
+			if (JSON.stringify(audience) !== JSON.stringify(prev)) {
+				changes.push(
+					this.#write(
+						roomId,
+						actionId,
+						"token",
+						row.id,
+						{ data, audience },
+						prev,
+					),
+				);
+			}
+		}
+		return changes;
+	}
+
+	/** Schreibt eine Änderung mit neuer Versionsnummer in Stand und Log. */
+	#write(
+		roomId: string,
+		actionId: string,
+		kind: EntityKind,
+		id: string,
+		after: { data: EntityData; audience: Audience } | null,
+		prevAudience: Audience | null,
+	): StoredChange {
+		const bumped = this.#stmts.bumpVersion.get(roomId);
+		if (!bumped) throw new Error(`Raum ${roomId} existiert nicht`);
+		const version = bumped.version;
+		if (after) {
+			this.#stmts.upsertEntity.run(
+				roomId,
+				kind,
+				id,
+				JSON.stringify(after.data),
+				JSON.stringify(after.audience),
+				version,
+			);
+		} else {
+			this.#stmts.deleteEntity.run(roomId, kind, id);
+		}
+		this.#stmts.insertChange.run(
+			roomId,
+			version,
+			actionId,
+			after ? "upsert" : "delete",
+			kind,
+			id,
+			after ? JSON.stringify(after.data) : null,
+			after ? JSON.stringify(after.audience) : null,
+			prevAudience ? JSON.stringify(prevAudience) : null,
+			Date.now(),
+		);
+		return {
+			version,
+			op: after ? "upsert" : "delete",
+			kind,
+			entityId: id,
+			data: after?.data ?? null,
+			audience: after?.audience ?? null,
+			prevAudience,
+		};
 	}
 
 	/**
@@ -239,6 +320,14 @@ export class ChangeLog {
 			version: r.version,
 		}));
 	}
+}
+
+/** Verdeckte Szene oder verdecktes Token: nur GM; sonst sieht es, wer die Szene sieht. */
+export function tokenAudience(
+	scene: Audience,
+	token: Pick<TokenData, "hidden">,
+): Audience {
+	return token.hidden || scene.type === "gm" ? { type: "gm" } : scene;
 }
 
 // Die Datenbank enthält nur Werte, die vorher gegen die Schemas geprüft wurden.
