@@ -31,3 +31,10 @@ startRouter(() => {
 			);
 	}
 });
+
+// Service Worker nur im Build und nur in sicheren Kontexten (HTTPS oder localhost).
+if (import.meta.env.PROD && "serviceWorker" in navigator && isSecureContext) {
+	navigator.serviceWorker.register("/sw.js").catch((err: unknown) => {
+		console.warn("Service Worker nicht registriert:", err);
+	});
+}

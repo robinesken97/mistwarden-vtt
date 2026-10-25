@@ -4,6 +4,8 @@ export default defineConfig({
 	build: {
 		// Referenzgerät: iPad 6 mit Safari 17.
 		target: ["safari17", "es2022"],
+		// /assets/ gehört dem Server (Bilder und Kacheln); der Client liegt unter /app/.
+		assetsDir: "app",
 	},
 	server: {
 		proxy: {

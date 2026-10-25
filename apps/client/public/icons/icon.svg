@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Mistwarden">
+	<title>Mistwarden</title>
+	<!-- Mistwarden-Symbol (selbst erstellt, AGPL-3.0 wie das Projekt): Turm im Nebel. -->
+	<rect width="512" height="512" rx="96" fill="#2a2540"/>
+	<circle cx="256" cy="210" r="120" fill="#5b4b8a"/>
+	<path d="M206 330V190l20-20v-30h20v20h20v-20h20v30l20 20v140z" fill="#ecebe8"/>
+	<rect x="244" y="230" width="24" height="40" rx="12" fill="#2a2540"/>
+	<g fill="none" stroke="#a99be0" stroke-linecap="round" stroke-width="22">
+		<path d="M96 336c40-22 80-22 120 0s80 22 120 0 80-22 80-22"/>
+		<path d="M136 392c40-22 80-22 120 0s80 22 120 0"/>
+	</g>
+</svg>

@@ -106,11 +106,12 @@ function toSummary(r: RoomRow): RoomSummary {
 	};
 }
 
-/** Legt einen Raum mit einer ersten, aktiven Szene an. */
+/** Legt einen Raum mit einer ersten, aktiven Szene an (`empty`: ohne Szene und Raumzustand). */
 export function createRoom(
 	db: Db,
 	apply: ApplySystemAction,
 	name: string,
+	opts: { empty?: boolean } = {},
 ): RoomSummary {
 	return db.transaction(() => {
 		const id = randomUUID();
@@ -119,6 +120,7 @@ export function createRoom(
 		db.prepare(
 			"INSERT INTO rooms (id, name, player_link_token, created_at) VALUES (?, ?, ?, ?)",
 		).run(id, name, token, createdAt);
+		if (opts.empty) return { id, name, createdAt, playerLinkToken: token };
 		const sceneId = randomUUID();
 		apply(id, {
 			op: "create",

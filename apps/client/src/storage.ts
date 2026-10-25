@@ -4,6 +4,7 @@
 const memory = new Map<string, string>();
 const GM_KEY = "mistwarden.gmToken";
 const playerKey = (roomId: string) => `mistwarden.player.${roomId}`;
+const LAST_ROOM_KEY = "mistwarden.lastPlayerRoom";
 
 function read(key: string): string | null {
 	try {
@@ -28,6 +29,14 @@ export const storage = {
 	gmToken: () => read(GM_KEY),
 	setGmToken: (token: string | null) => write(GM_KEY, token),
 	playerToken: (roomId: string) => read(playerKey(roomId)),
-	setPlayerToken: (roomId: string, token: string | null) =>
-		write(playerKey(roomId), token),
+	setPlayerToken: (roomId: string, token: string | null) => {
+		write(playerKey(roomId), token);
+		if (token) write(LAST_ROOM_KEY, roomId);
+		else if (read(LAST_ROOM_KEY) === roomId) write(LAST_ROOM_KEY, null);
+	},
+	/** Raum, dem dieses Gerät zuletzt als Spieler beigetreten ist (Start der PWA). */
+	lastPlayerRoom: () => {
+		const roomId = read(LAST_ROOM_KEY);
+		return roomId && read(playerKey(roomId)) ? roomId : null;
+	},
 };

@@ -100,6 +100,45 @@ export const api = {
 			`/api/rooms/${encodeURIComponent(roomId)}/player-link`,
 			{ token, body: {} },
 		),
+	/** Raum als Datei (JSON mit Bildern); liefert sie als Blob zum Speichern. */
+	async exportRoom(token: string, roomId: string): Promise<Blob> {
+		let res: Response;
+		try {
+			res = await fetch(`/api/rooms/${encodeURIComponent(roomId)}/export`, {
+				headers: { authorization: `Bearer ${token}` },
+			});
+		} catch {
+			throw new ApiError(0, "network");
+		}
+		if (!res.ok) {
+			const body = (await res.json().catch(() => ({}))) as {
+				error?: ApiErrorCode;
+			};
+			throw new ApiError(res.status, body.error ?? "internal");
+		}
+		return res.blob();
+	},
+	/** Exportdatei unverändert hochladen; der Server legt daraus einen neuen Raum an. */
+	async importRoom(token: string, file: File): Promise<RoomSummary> {
+		let res: Response;
+		try {
+			res = await fetch("/api/rooms/import", {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					authorization: `Bearer ${token}`,
+				},
+				body: file,
+			});
+		} catch {
+			throw new ApiError(0, "network");
+		}
+		const body = (await res.json().catch(() => ({}))) as {
+			error?: ApiErrorCode;
+		};
+		if (!res.ok) throw new ApiError(res.status, body.error ?? "internal");
+		return body as RoomSummary;
+	},
 	linkInfo: (linkToken: string) =>
 		call<LinkInfoResponse>("/api/join/info", { body: { linkToken } }),
 	join: (linkToken: string, displayName: string) =>
@@ -125,6 +164,8 @@ export function errorText(err: unknown): string {
 			return "Dateiformat nicht unterstützt (PNG, JPEG oder WebP).";
 		case "too_large":
 			return "Datei oder Bild zu groß.";
+		case "invalid_import":
+			return "Die Datei ist kein gültiger Mistwarden-Raum.";
 		default:
 			return "Unerwarteter Fehler.";
 	}

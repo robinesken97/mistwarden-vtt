@@ -9,6 +9,8 @@ import {
 	type JoinResponse,
 	type LinkInfoResponse,
 	LinkRequestSchema,
+	type RoomExport,
+	RoomExportSchema,
 	type RoomSummary,
 	type SessionResponse,
 	UPLOAD_CONTENT_TYPES,
@@ -29,6 +31,8 @@ import {
 	regeneratePlayerLink,
 	type Session,
 } from "../rooms.ts";
+import { exportRoom, ImportError, importRoom } from "../rooms-export.ts";
+import type { StoredEntity } from "../sync/visibility.ts";
 import { RateLimiter } from "./rate-limit.ts";
 
 const MAX_BODY_BYTES = 16 * 1024;
@@ -38,6 +42,9 @@ export interface ApiDeps {
 	applySystem: ApplySystemAction;
 	assets: AssetStore;
 	uploadMaxBytes: number;
+	importMaxBytes: number;
+	/** Alle Objekte eines Raums, ungefiltert (nur für die GM, z. B. Export). */
+	entities: (roomId: string) => StoredEntity[];
 	/** X-Forwarded-For nur auswerten, wenn ein Reverse Proxy davor sitzt. */
 	trustProxy: boolean;
 }
@@ -121,6 +128,39 @@ export function createApi(deps: ApiDeps) {
 		const token = regeneratePlayerLink(db, ctx.params[0] as string);
 		if (!token) throw new HttpError(404, "not_found");
 		return { playerLinkToken: token };
+	});
+
+	route("GET", "/api/rooms/:id/export", async (ctx): Promise<RoomExport> => {
+		ctx.gm();
+		const file = await exportRoom(
+			db,
+			deps.assets,
+			deps.entities,
+			ctx.params[0] as string,
+		);
+		if (!file) throw new HttpError(404, "not_found");
+		return file;
+	});
+
+	// Raum aus einer Exportdatei als neuen Raum anlegen.
+	route("POST", "/api/rooms/import", async (ctx): Promise<RoomSummary> => {
+		ctx.gm();
+		const parsed = RoomExportSchema.safeParse(
+			await readJson(ctx.req, deps.importMaxBytes),
+		);
+		if (!parsed.success) throw new HttpError(400, "invalid_import");
+		try {
+			return await importRoom(db, deps.assets, applySystem, parsed.data);
+		} catch (err) {
+			if (err instanceof ImportError)
+				throw new HttpError(400, "invalid_import");
+			if (err instanceof AssetError) {
+				throw err.code === "unsupported"
+					? new HttpError(415, "unsupported")
+					: new HttpError(413, "too_large");
+			}
+			throw err;
+		}
 	});
 
 	route("POST", "/api/join/info", async (ctx): Promise<LinkInfoResponse> => {
@@ -262,7 +302,10 @@ function clientIp(req: IncomingMessage, trustProxy: boolean): string {
 	return req.socket.remoteAddress ?? "unknown";
 }
 
-async function readJson(req: IncomingMessage): Promise<unknown> {
+async function readJson(
+	req: IncomingMessage,
+	maxBytes = MAX_BODY_BYTES,
+): Promise<unknown> {
 	if (!req.headers["content-type"]?.startsWith("application/json")) {
 		throw new HttpError(400, "bad_request");
 	}
@@ -270,7 +313,11 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
 	let size = 0;
 	for await (const chunk of req) {
 		size += (chunk as Buffer).length;
-		if (size > MAX_BODY_BYTES) throw new HttpError(400, "bad_request");
+		if (size > maxBytes) {
+			throw maxBytes === MAX_BODY_BYTES
+				? new HttpError(400, "bad_request")
+				: new HttpError(413, "too_large");
+		}
 		chunks.push(chunk as Buffer);
 	}
 	try {

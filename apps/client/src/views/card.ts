@@ -8,6 +8,7 @@ export interface Card {
 	hide(): void;
 	/** Wem die Karte gerade gehört (z. B. "note:<id>"), sonst null. */
 	owner(): string | null;
+	destroy(): void;
 }
 
 export function createCard(): Card {
@@ -27,9 +28,10 @@ export function createCard(): Card {
 	el.addEventListener("pointerdown", (e) => {
 		if (e.target === el) hide();
 	});
-	window.addEventListener("keydown", (e) => {
+	const keydown = (e: KeyboardEvent) => {
 		if (e.key === "Escape" && !el.hidden) hide();
-	});
+	};
+	window.addEventListener("keydown", keydown);
 
 	function hide(): void {
 		current = null;
@@ -46,5 +48,6 @@ export function createCard(): Card {
 		},
 		hide,
 		owner: () => current,
+		destroy: () => window.removeEventListener("keydown", keydown),
 	};
 }

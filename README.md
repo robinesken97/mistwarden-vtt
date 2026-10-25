@@ -2,7 +2,7 @@
 
 Ein selbst gehostetes, schlankes Virtual Tabletop für die eigene Runde: Karten, Tokens, Fog und Würfel im Browser, ohne Upload-Limits und ohne Abo. Die Daten bleiben auf dem eigenen Server.
 
-> **Status:** frühe Entwicklung (Stufe 1, Schritt 5: statischer Fog). Noch nicht spielbar – Würfel, Ping, Messen und Zeichnen folgen.
+> **Status:** Stufe 1, Schritte 1–8 umgesetzt, noch nicht auf echten iPads getestet. Es fehlt Schritt 9 (Bereitstellung als LXC mit HTTPS im LAN) und die erste Testsession am Tisch.
 
 Ziele, Umfang und Architektur stehen in [SPEC.md](SPEC.md).
 
@@ -18,6 +18,13 @@ npm run dev:client    # Vite-Entwicklungsserver mit Proxy für /api und /ws
 ```
 
 Dann `http://localhost:5173` öffnen, mit dem GM-Passwort anmelden, einen Raum anlegen und den Spieler-Link in einem zweiten Browser bzw. privaten Fenster öffnen.
+
+Im Betrieb liefert der App-Server auch den gebauten Client aus (`apps/client/dist`, abweichend über `CLIENT_DIST_PATH`); es läuft also nur ein Prozess hinter dem Reverse Proxy:
+
+```bash
+npm ci && npm run build
+npm start             # Client, API, WebSocket und Bilder auf HOST:PORT
+```
 
 ### Zugang
 
@@ -59,6 +66,12 @@ Dann `http://localhost:5173` öffnen, mit dem GM-Passwort anmelden, einen Raum a
 - **Notizen:** Die Spielleitung setzt sie im Menü unter „Notizen“ (in der Bildmitte), verschiebt sie per Ziehen und öffnet sie per Antippen. Neue Notizen sind nur für die Spielleitung sichtbar; mit „Für Spieler sichtbar“ sehen sie alle, die die Szene sehen. Verdeckte Notizen werden Spielern nicht übertragen.
 - **Handouts:** Text und/oder Bild, im Menü unter „Handouts“. Empfänger: Entwurf (nur Spielleitung), alle oder ausgewählte Spieler. „Zeigen“ öffnet das Handout bei den Empfängern sofort, auch wenn ein Gerät gerade getrennt war; später finden sie es unter „Handouts“. Andere Spieler erhalten es nicht. Handout-Bilder erscheinen auch in der Bildliste für Karten.
 
+### Rückgängig, PWA, Raum-Export
+
+- **Rückgängig/Wiederholen:** Knöpfe ↶ und ↷ oben bzw. Strg/⌘+Z und Strg/⌘+Umschalt+Z (oder Strg+Y). Gilt für eigene Änderungen an Tokens, Fog, Zeichnungen und Notizen auf diesem Gerät, bis zu 50 Schritte. Hat jemand anderes das Objekt inzwischen geändert, wird nichts überschrieben.
+- **PWA:** Auf dem iPad in Safari „Teilen → Zum Home-Bildschirm“; Mistwarden startet dann ohne Browserleiste. Das geht nur über HTTPS (Schritt 9). Eine Web-App vom Home-Bildschirm hat auf dem iPad eigenen Speicher: Spieler fügen dort beim ersten Start ihren Spieler-Link in das Feld „Als Spieler beitreten“ ein; danach öffnet sie direkt den Raum. Der Service Worker hält nur die App selbst vor, nie Spielstand oder Kartenkacheln.
+- **Raum-Export/-Import:** In der Raumliste „Exportieren“ speichert einen Raum als JSON-Datei (Szenen, Tokens, Fog, Zeichnungen, Notizen, Handouts und die verwendeten Bilder als Original). „Raum importieren“ legt daraus einen neuen Raum an; Bilder werden dabei neu kodiert. Spieler und Würfel-Log gehören nicht dazu: Spieler treten im neuen Raum neu bei, ihre Tokens und Zeichnungen gehören danach der Spielleitung, Szenen und Handouts für einzelne Spieler sind verdeckt. Größte Importdatei: `IMPORT_MAX_MB`. Exportdateien können lizenzierte Karten enthalten – nicht ins Repository legen (`exports/` ist ignoriert).
+
 Weitere Befehle: `npm test`, `npm run typecheck`, `npm run check` (Lint und Format), `npm run build`.
 
 ### Aufbau
@@ -67,7 +80,7 @@ Weitere Befehle: `npm test`, `npm run typecheck`, `npm run check` (Lint und Form
 | --- | --- |
 | `packages/protocol` | gemeinsame Nachrichtentypen und Schemas für Client und Server |
 | `apps/server` | autoritativer App-Server: HTTP, WebSocket, SQLite |
-| `apps/client` | Browser-Client (TypeScript, Vite; PixiJS folgt) |
+| `apps/client` | Browser-Client (TypeScript, Vite, PixiJS mit WebGL) |
 
 ## Bekannte Einschränkungen
 

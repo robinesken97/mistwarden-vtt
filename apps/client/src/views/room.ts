@@ -19,6 +19,7 @@ import {
 	defaultSocketUrl,
 	SyncConnection,
 } from "../net/connection.ts";
+import { History, type UndoResult } from "../net/history.ts";
 import type { Stage, StageCallbacks, StageTarget } from "../render/stage.ts";
 import { navigate } from "../router.ts";
 import { storage } from "../storage.ts";
@@ -154,14 +155,64 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	);
 	const roomEl = root.firstElementChild as HTMLElement;
 
+	const showActionError = (err: unknown) =>
+		error.show(
+			err instanceof ActionRejected ? rejectText[err.reason] : String(err),
+		);
+
+	// --- Rückgängig/Wiederholen (eigene Änderungen auf diesem Gerät) ---
+	const history = new History({
+		get: (key) => conn.entities.get(key),
+		send: (action) => conn.send(action),
+	});
+	const undoText: Record<UndoResult, string | null> = {
+		done: null,
+		empty: null,
+		stale: "Nicht mehr möglich: Das Objekt wurde inzwischen geändert.",
+		failed: "Rückgängig/Wiederholen ist fehlgeschlagen.",
+	};
+	async function step(direction: "undo" | "redo"): Promise<void> {
+		error.show(null);
+		const result = await (direction === "undo"
+			? history.undo()
+			: history.redo());
+		error.show(undoText[result]);
+		renderHistory();
+	}
+	const undoButton = button("↶", () => void step("undo"), "secondary");
+	undoButton.title = "Rückgängig (Strg/⌘+Z)";
+	undoButton.setAttribute("aria-label", "Rückgängig");
+	const redoButton = button("↷", () => void step("redo"), "secondary");
+	redoButton.title = "Wiederholen (Strg/⌘+Umschalt+Z)";
+	redoButton.setAttribute("aria-label", "Wiederholen");
+	function renderHistory(): void {
+		undoButton.disabled = !history.canUndo;
+		redoButton.disabled = !history.canRedo;
+	}
+	const historyKeys = (e: KeyboardEvent) => {
+		const target = e.target as HTMLElement | null;
+		if (target?.closest("input, textarea, select")) return;
+		if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+		const key = e.key.toLowerCase();
+		if (key === "z") {
+			e.preventDefault();
+			void step(e.shiftKey ? "redo" : "undo");
+		} else if (key === "y") {
+			e.preventDefault();
+			void step("redo");
+		}
+	};
+	window.addEventListener("keydown", historyKeys);
+
 	const run = (action: Action): Promise<number | undefined> => {
 		error.show(null);
-		return conn.send(action).catch((err: unknown) => {
-			error.show(
-				err instanceof ActionRejected ? rejectText[err.reason] : String(err),
-			);
-			return undefined;
-		});
+		return history
+			.run(action)
+			.catch((err: unknown) => {
+				showActionError(err);
+				return undefined;
+			})
+			.finally(renderHistory);
 	};
 
 	// --- Tokens ---
@@ -231,6 +282,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			table.toolSwitch,
 			table.logButton,
 			handouts.hudButton,
+			undoButton,
+			redoButton,
 			tokens.snapButton,
 		);
 	roomEl.append(
@@ -774,6 +827,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		table.render();
 		notes.render();
 		handouts.render();
+		renderHistory();
 		updateStage();
 
 		if (conn.status === "unauthorized") {
@@ -811,6 +865,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		disposed = true;
 		clearTimeout(gridTimer);
 		fog.destroy();
+		card.destroy();
+		window.removeEventListener("keydown", historyKeys);
 		conn.stop();
 		stage?.destroy();
 		stage = null;
