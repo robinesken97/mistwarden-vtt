@@ -22,7 +22,10 @@ import {
 import type { Stage, StageCallbacks, StageTarget } from "../render/stage.ts";
 import { navigate } from "../router.ts";
 import { storage } from "../storage.ts";
+import { createCard } from "./card.ts";
 import { createFogTools } from "./fog.ts";
+import { createHandoutTools } from "./handouts.ts";
+import { createNoteTools } from "./notes.ts";
 import { createTableTools } from "./table.ts";
 import { createTokenTools } from "./tokens.ts";
 
@@ -208,12 +211,26 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		},
 	});
 
+	// --- Notizen und Handouts ---
+	const card = createCard();
+	const notes = createNoteTools({
+		conn,
+		isGm,
+		run,
+		displayedScene,
+		viewCenter: () => stage?.viewCenter() ?? null,
+		card,
+		changed: () => stage?.setNotes(notes.stageNotes()),
+	});
+	const handouts = createHandoutTools({ conn, roomId, gmToken, run, card });
+
 	hud
 		.querySelector(".hud-slot")
 		?.replaceWith(
 			fog.toolSwitch,
 			table.toolSwitch,
 			table.logButton,
+			handouts.hudButton,
 			tokens.snapButton,
 		);
 	roomEl.append(
@@ -225,6 +242,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		table.measureLabel,
 		table.logPanel,
 		table.toast,
+		card.el,
 	);
 	panel.insertBefore(fog.settingsSection, error);
 
@@ -232,6 +250,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const selectTarget = (target: StageTarget | null) => {
 		tokens.select(target?.kind === "token" ? target.id : null);
 		fog.select(target?.kind === "fog" ? target.id : null);
+		notes.select(target?.kind === "note" ? target.id : null);
 	};
 	const stageCallbacks: StageCallbacks = {
 		canDrag: tokens.canDrag,
@@ -240,6 +259,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		context: selectTarget,
 		...fog.callbacks,
 		...table.callbacks,
+		moveNote: notes.moveNote,
 	};
 
 	// --- Daten aus dem gespiegelten Raumzustand ---
@@ -608,6 +628,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			table.gmMeasureSection,
 			tokens.gmSection,
 			fog.gmSection,
+			notes.gmSection,
+			handouts.gmSection,
 			h("h2", {}, "Spieler-Link"),
 			linkBox,
 			h(
@@ -657,6 +679,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		stage.setTokens(tokens.stageTokens());
 		stage.setFog(fog.stageFog(), isGm);
 		stage.setDrawings(table.stageDrawings());
+		stage.setNotes(notes.stageNotes());
 		const scene = displayedScene();
 		const request = ++stageRequest;
 		if (!scene) {
@@ -749,6 +772,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		tokens.render();
 		fog.render();
 		table.render();
+		notes.render();
+		handouts.render();
 		updateStage();
 
 		if (conn.status === "unauthorized") {

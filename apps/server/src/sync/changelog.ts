@@ -65,7 +65,7 @@ export class ChangeLog {
 				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind = ? AND id = ?",
 			),
 			sceneChildren: db.prepare<[string, string], EntityRow>(
-				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind IN ('token', 'fog', 'drawing') AND json_extract(data, '$.sceneId') = ?",
+				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind IN ('token', 'fog', 'drawing', 'note') AND json_extract(data, '$.sceneId') = ?",
 			),
 			rollsBeyond: db.prepare<[string, number], EntityRow>(
 				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind = 'roll' ORDER BY version DESC LIMIT -1 OFFSET ?",
@@ -174,7 +174,7 @@ export class ChangeLog {
 				}
 			}
 
-			// Tokens, Fog und Zeichnungen: Sichtbarkeit wird aus Szene (und `hidden`) abgeleitet, nie direkt gesetzt.
+			// Szenen-Kinder (Tokens, Fog, Zeichnungen, Notizen): Sichtbarkeit wird aus Szene (und `hidden`) abgeleitet, nie direkt gesetzt.
 			if (isSceneChild(action.kind) && after) {
 				if (action.op !== "delete" && "audience" in action && action.audience) {
 					return { status: "rejected", reason: "invalid" };
@@ -244,7 +244,7 @@ export class ChangeLog {
 	}
 
 	/**
-	 * Zieht Tokens, Fog und Zeichnungen einer Szene nach: Wird die Szene gelöscht, verschwinden sie;
+	 * Zieht die Kinder einer Szene (Tokens, Fog, Zeichnungen, Notizen) nach: Wird die Szene gelöscht, verschwinden sie;
 	 * ändert sich ihre Sichtbarkeit, ändert sich die abgeleitete Sichtbarkeit mit.
 	 */
 	#cascadeScene(

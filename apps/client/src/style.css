@@ -523,3 +523,91 @@ button.swatch {
 	box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
 	pointer-events: none;
 }
+
+/* --- Notizen und Handouts --- */
+.card-overlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: max(1rem, env(safe-area-inset-top)) 1rem
+		max(1rem, env(safe-area-inset-bottom));
+	background: rgb(0 0 0 / 0.35);
+}
+
+.card-overlay[hidden] {
+	display: none;
+}
+
+.card {
+	display: flex;
+	flex-direction: column;
+	width: min(36rem, 100%);
+	max-height: 100%;
+	padding: 0.5rem 1rem 1rem;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.card-close {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.card-body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+.card-body h2 {
+	margin: 0;
+}
+
+.card-body textarea {
+	width: 100%;
+	font: inherit;
+	resize: vertical;
+}
+
+.card-text {
+	margin: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.handout-image {
+	position: relative;
+	width: 100%;
+	background: var(--line);
+}
+
+.handout-image img {
+	position: absolute;
+	display: block;
+}
+
+.handout-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.handout-list li {
+	margin: 0.25rem 0;
+}
+
+.handout-picks {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+}
+
+.handout-picks[hidden] {
+	display: none;
+}

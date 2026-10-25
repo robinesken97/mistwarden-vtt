@@ -133,6 +133,18 @@ const rules: Record<EntityKind, Rule> = {
 		return "ok";
 	},
 
+	// Notizen schreibt nur die GM; eine Notiz wechselt nie die Szene.
+	note: (identity, req) => {
+		if (!isGm(identity)) return "forbidden";
+		const before = req.before?.data as { sceneId: string } | undefined;
+		const after = req.after?.data as { sceneId: string } | undefined;
+		if (before && after && before.sceneId !== after.sceneId) return "invalid";
+		return "ok";
+	},
+
+	// Handouts verteilt nur die GM; die Audience bestimmt die Empfänger.
+	handout: (identity) => (isGm(identity) ? "ok" : "forbidden"),
+
 	// Spieler entstehen nur über den Spieler-Link (serverseitig mit GM-Rechten).
 	player: (identity, req) => {
 		if (!isGm(identity)) return "forbidden";

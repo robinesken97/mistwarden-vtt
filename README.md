@@ -54,6 +54,11 @@ Dann `http://localhost:5173` öffnen, mit dem GM-Passwort anmelden, einen Raum a
 - **Messen:** „Messen“ wählen und ziehen; gemessen wird von Feldmitte zu Feldmitte in Feldern und in der Einheit der Szene (Standard 5 ft pro Feld). Einheit, Wert pro Feld und Diagonalregel (jede Diagonale 1 Feld, abwechselnd 1-2-1, Luftlinie) stellt die Spielleitung pro Szene im Menü unter „Messen“ ein; auf Hex-Grids zählt die Hex-Distanz. Die Messung sieht nur, wer misst.
 - **Zeichnen:** Freihand, Linie, Rechteck oder Ellipse in drei Strichstärken. Spieler zeichnen in ihrer Farbe und löschen nur eigene Zeichnungen (Radierer antippen bzw. darüberziehen, oder „Meine löschen“); die Spielleitung wählt die Farbe und löscht alle. Zeichnungen gehören zur Szene und folgen ihrer Sichtbarkeit.
 
+### Notizen und Handouts
+
+- **Notizen:** Die Spielleitung setzt sie im Menü unter „Notizen“ (in der Bildmitte), verschiebt sie per Ziehen und öffnet sie per Antippen. Neue Notizen sind nur für die Spielleitung sichtbar; mit „Für Spieler sichtbar“ sehen sie alle, die die Szene sehen. Verdeckte Notizen werden Spielern nicht übertragen.
+- **Handouts:** Text und/oder Bild, im Menü unter „Handouts“. Empfänger: Entwurf (nur Spielleitung), alle oder ausgewählte Spieler. „Zeigen“ öffnet das Handout bei den Empfängern sofort, auch wenn ein Gerät gerade getrennt war; später finden sie es unter „Handouts“. Andere Spieler erhalten es nicht. Handout-Bilder erscheinen auch in der Bildliste für Karten.
+
 Weitere Befehle: `npm test`, `npm run typecheck`, `npm run check` (Lint und Format), `npm run build`.
 
 ### Aufbau

@@ -27,6 +27,7 @@ import { attachWheelZoom, Camera } from "./camera.ts";
 import { DrawingLayer, type StageDrawing, strokeDrawing } from "./drawings.ts";
 import { FogLayer, type StageFog } from "./fog.ts";
 import { GridLayer } from "./grid.ts";
+import { NoteLayer, type StageNote } from "./notes.ts";
 import { TileCache } from "./tile-cache.ts";
 import {
 	defaultBudgetBytes,
@@ -39,6 +40,7 @@ import { type StageToken, TokenLayer, TokenTextures } from "./tokens.ts";
 
 export type { StageDrawing } from "./drawings.ts";
 export type { StageFog } from "./fog.ts";
+export type { StageNote } from "./notes.ts";
 export type { StageToken } from "./tokens.ts";
 
 export interface WorldPoint {
@@ -47,7 +49,7 @@ export interface WorldPoint {
 }
 
 /** Angetipptes Objekt. */
-export type StageTarget = { kind: "token" | "fog"; id: string };
+export type StageTarget = { kind: "token" | "fog" | "note"; id: string };
 
 /** Werkzeug für einen Finger bzw. die linke Maustaste. */
 export type StageTool =
@@ -82,6 +84,8 @@ export interface StageCallbacks {
 	context(target: StageTarget | null, screen: { x: number; y: number }): void;
 	/** Token losgelassen; `free` = ohne Einrasten (Alt-Taste). */
 	drop(tokenId: string, world: WorldPoint, free: boolean): void;
+	/** Notiz losgelassen (nur die GM zieht Notizen). */
+	moveNote(noteId: string, world: WorldPoint): void;
 	/** Polygon-Werkzeug: Anzahl gesetzter Punkte hat sich geändert. */
 	polygonChanged(points: number): void;
 	/** Polygon geschlossen (Tipp auf den ersten Punkt oder finishPolygon). */
@@ -114,6 +118,8 @@ export interface Stage {
 	setFog(fog: StageFog[], gm: boolean): void;
 	/** Zeichnungen der angezeigten Szene. */
 	setDrawings(drawings: StageDrawing[]): void;
+	/** Notizen der angezeigten Szene. */
+	setNotes(notes: StageNote[]): void;
 	/** Ping anzeigen (Weltkoordinaten). */
 	showPing(x: number, y: number, color: string): void;
 	setTool(tool: StageTool): void;
@@ -200,13 +206,14 @@ export async function createStage(
 	// Fog über Karte, Props und Tokens; darüber Notizen, Zeichnungen und die Werkzeug-Vorschau.
 	const fogLayer = new FogLayer();
 	const drawingLayer = new DrawingLayer();
+	const noteLayer = new NoteLayer();
 	const preview = new Graphics({ label: "tool-preview" });
 	world.addChild(
 		mapLayer,
 		propsLayer.container,
 		tokenLayer.container,
 		fogLayer.container,
-		new Container({ label: "notes" }),
+		noteLayer.container,
 		drawingLayer.container,
 		preview,
 	);
@@ -252,6 +259,7 @@ export async function createStage(
 				x: number;
 				y: number;
 		  }
+		| { type: "note"; id: string; x: number; y: number }
 		| { type: "pan"; lastX: number; lastY: number }
 		| null = null;
 
@@ -260,8 +268,15 @@ export async function createStage(
 		return tokenLayer.hitTest(p.x, p.y) ?? propsLayer.hitTest(p.x, p.y);
 	};
 
-	/** Tokens haben Vorrang; Fog-Flächen sind nur für die GM antippbar (oberste zuerst). */
+	const hitNote = (sx: number, sy: number): string | null => {
+		const p = camera.screenToWorld(sx, sy);
+		return noteLayer.hitTest(p.x, p.y, camera.zoom);
+	};
+
+	/** Notizen liegen oben, dann Tokens; Fog-Flächen sind nur für die GM antippbar (oberste zuerst). */
 	const hitTest = (sx: number, sy: number): StageTarget | null => {
+		const note = hitNote(sx, sy);
+		if (note) return { kind: "note", id: note };
 		const token = hitToken(sx, sy);
 		if (token) return { kind: "token", id: token };
 		if (!fogGm) return null;
@@ -368,8 +383,14 @@ export async function createStage(
 					eraseAt(x, y);
 					return;
 				}
+				const noteId = tool.type === "select" ? hitNote(x, y) : null;
+				const note = noteLayer.notes.find((n) => n.id === noteId);
+				if (note?.draggable) {
+					drag = { type: "note", id: note.id, x: note.x, y: note.y };
+					return;
+				}
 				// Im Polygon-Werkzeug verschiebt Ziehen mit einem Finger die Karte.
-				const id = tool.type === "select" ? hitToken(x, y) : null;
+				const id = tool.type === "select" && !note ? hitToken(x, y) : null;
 				const token = id ? tokens.find((t) => t.id === id) : undefined;
 				if (id && token && callbacks.canDrag(id)) {
 					const p = camera.screenToWorld(x, y);
@@ -411,6 +432,10 @@ export async function createStage(
 					const p = camera.screenToWorld(x, y);
 					drag.x = p.x - drag.offsetX;
 					drag.y = p.y - drag.offsetY;
+				} else if (drag?.type === "note") {
+					const p = camera.screenToWorld(x, y);
+					drag.x = p.x;
+					drag.y = p.y;
 				} else if (drag?.type === "pan") {
 					camera.panBy(x - drag.lastX, y - drag.lastY);
 					drag.lastX = x;
@@ -438,6 +463,9 @@ export async function createStage(
 				drag = null;
 				if (done?.type === "token") {
 					callbacks.drop(done.id, { x: done.x, y: done.y }, altKey);
+				}
+				if (done?.type === "note") {
+					callbacks.moveNote(done.id, { x: done.x, y: done.y });
 				}
 				requestRender();
 			},
@@ -541,6 +569,7 @@ export async function createStage(
 		const seconds = (performance.now() - startTime) / 1000;
 		fogLayer.set(fog, fogGm, 1.5 / camera.zoom);
 		fogLayer.update(view, scene?.grid.size ?? 100, animateFog ? seconds : 0);
+		noteLayer.update(camera.zoom, drag?.type === "note" ? drag : null);
 		drawPreview();
 		clearTimeout(pingTimer);
 		if (drawingLayer.updatePings(performance.now(), camera.zoom)) {
@@ -689,6 +718,12 @@ export async function createStage(
 			drawingLayer.set(next);
 			requestRender();
 		},
+		setNotes(next) {
+			noteLayer.set(next);
+			const dragged = drag?.type === "note" ? drag.id : null;
+			if (dragged && !next.some((n) => n.id === dragged)) drag = null;
+			requestRender();
+		},
 		showPing(x, y, color) {
 			drawingLayer.ping(x, y, color, performance.now());
 			requestRender();
@@ -739,6 +774,7 @@ export async function createStage(
 			clearTimeout(pingTimer);
 			fogLayer.destroy();
 			drawingLayer.destroy();
+			noteLayer.destroy();
 			detachGestures();
 			detachWheel();
 			cache.destroy();

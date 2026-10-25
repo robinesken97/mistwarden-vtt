@@ -229,6 +229,36 @@ export const RollSchema = z.strictObject({
 });
 export type RollData = z.infer<typeof RollSchema>;
 
+/**
+ * Notiz auf einer Szene (Mittelpunkt in Kartenpixeln). `hidden` = nur für die GM;
+ * sonst sieht sie, wer die Szene sieht. Nur die GM legt Notizen an und ändert sie.
+ */
+export const NoteSchema = z.strictObject({
+	sceneId: IdSchema,
+	x: z.number().min(-100_000).max(100_000),
+	y: z.number().min(-100_000).max(100_000),
+	title: z.string().trim().max(60),
+	text: z.string().max(4000),
+	hidden: z.boolean(),
+});
+export type NoteData = z.infer<typeof NoteSchema>;
+
+/**
+ * Handout des Raums: Text und/oder Bild. Wer es bekommt, legt die GM über die Audience
+ * fest (nur GM = Entwurf, alle, einzelne Spieler); andere erhalten es nie.
+ * `shownAt` setzt die GM beim Zeigen; Empfänger öffnen es dann automatisch.
+ */
+export const HandoutSchema = z
+	.strictObject({
+		title: z.string().trim().min(1).max(100),
+		text: z.string().max(10_000),
+		/** Bild (Asset mit Kachelpyramide) oder null. */
+		assetId: IdSchema.nullable(),
+		shownAt: z.number().int().nonnegative().nullable(),
+	})
+	.refine((d) => d.text.trim() !== "" || d.assetId !== null, "Text oder Bild");
+export type HandoutData = z.infer<typeof HandoutSchema>;
+
 /** So viele Würfe behält der Server pro Raum; ältere fallen aus dem Log. */
 export const MAX_ROLLS = 200;
 
@@ -240,6 +270,8 @@ export const EntityKindSchema = z.enum([
 	"fog",
 	"drawing",
 	"roll",
+	"note",
+	"handout",
 ]);
 export type EntityKind = z.infer<typeof EntityKindSchema>;
 
@@ -252,6 +284,8 @@ export const entitySchemas: Record<EntityKind, z.ZodType<EntityData>> = {
 	fog: FogSchema,
 	drawing: DrawingSchema,
 	roll: RollSchema,
+	note: NoteSchema,
+	handout: HandoutSchema,
 };
 
 /** Objektarten, deren Sichtbarkeit aus ihrer Szene folgt. */
@@ -259,6 +293,7 @@ export const SCENE_CHILD_KINDS: readonly EntityKind[] = [
 	"token",
 	"fog",
 	"drawing",
+	"note",
 ];
 
 export function isSceneChild(kind: EntityKind): boolean {
