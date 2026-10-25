@@ -1,13 +1,18 @@
 import {
 	type Audience,
+	type DrawingData,
 	type EntityData,
 	type EntityKind,
 	type Identity,
+	isSceneChild,
 	PLAYER_TOKEN_FIELDS,
+	type PlayerData,
 	ROOM_STATE_ID,
+	type RollData,
 	type RoomStateData,
 	type TokenData,
 } from "@mistwarden/protocol";
+import { canSee } from "./visibility.ts";
 
 export interface EntityState {
 	data: EntityData;
@@ -19,6 +24,8 @@ export interface WriteRequest {
 	id: string;
 	before: EntityState | null;
 	after: EntityState | null;
+	/** Vom Server selbst erzeugter Stand (z. B. ein ausgewürfelter Wurf), nicht vom Client. */
+	trusted: boolean;
 	/** Liest andere Objekte des Raums (ungefiltert), für Regeln über Objektgrenzen hinweg. */
 	lookup: (kind: EntityKind, id: string) => EntityState | undefined;
 }
@@ -90,6 +97,42 @@ const rules: Record<EntityKind, Rule> = {
 		return "ok";
 	},
 
+	// Zeichnen dürfen alle auf Szenen, die sie sehen; Spieler nur in eigener Farbe
+	// und nur eigene Zeichnungen löschen. Zeichnungen werden nicht verändert, nur ersetzt.
+	drawing: (identity, req) => {
+		const before = req.before?.data as DrawingData | undefined;
+		const after = req.after?.data as DrawingData | undefined;
+		if (before && after && before.sceneId !== after.sceneId) return "invalid";
+		if (isGm(identity)) return "ok";
+		if (req.op === "update") return "forbidden";
+		const data = (after ?? before) as DrawingData;
+		if (data.ownerId !== identity.playerId) return "forbidden";
+		if (req.op === "create") {
+			if (!req.after || !canSee(identity, req.after.audience)) {
+				return "forbidden";
+			}
+			const player = req.lookup("player", identity.playerId);
+			const color = (player?.data as PlayerData | undefined)?.color;
+			if (color?.toLowerCase() !== data.color.toLowerCase()) {
+				return "forbidden";
+			}
+		}
+		return "ok";
+	},
+
+	// Würfe legt nur der Server an (aus der Formel des Clients); löschen darf die GM.
+	roll: (identity, req) => {
+		if (req.op === "delete") return isGm(identity) ? "ok" : "forbidden";
+		if (req.op !== "create" || !req.trusted || !req.after) return "forbidden";
+		const roll = req.after.data as RollData;
+		const author = isGm(identity) ? null : identity.playerId;
+		if (roll.authorId !== author) return "forbidden";
+		if (roll.hidden && !isGm(identity)) return "forbidden";
+		const expected = roll.hidden ? "gm" : "all";
+		if (req.after.audience.type !== expected) return "invalid";
+		return "ok";
+	},
+
 	// Spieler entstehen nur über den Spieler-Link (serverseitig mit GM-Rechten).
 	player: (identity, req) => {
 		if (!isGm(identity)) return "forbidden";
@@ -103,8 +146,16 @@ export function checkWrite(
 	kind: EntityKind,
 	req: WriteRequest,
 ): Verdict {
-	// Nur die GM legt fest, wer etwas sieht.
-	if (identity.role !== "gm" && audienceChanged(req)) return "forbidden";
+	// Nur die GM legt fest, wer etwas sieht. Bei Szenen-Kindern leitet der Server
+	// die Sichtbarkeit selbst ab; bei Würfen folgt sie aus `hidden` (Regel unten).
+	if (
+		identity.role !== "gm" &&
+		!isSceneChild(kind) &&
+		!req.trusted &&
+		audienceChanged(req)
+	) {
+		return "forbidden";
+	}
 	return rules[kind](identity, req);
 }
 

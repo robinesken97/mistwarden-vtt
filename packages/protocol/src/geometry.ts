@@ -1,4 +1,4 @@
-import type { GridData } from "./entities.ts";
+import type { GridData, MeasureData } from "./entities.ts";
 
 // Einrasten am Grid. Die Hex-Mittelpunkte müssen exakt zum Grid-Shader passen
 // (apps/client/src/render/grid.ts): zwei Gitter {k·r} und {r/2 + k·r} mit r = (1, √3)
@@ -48,4 +48,61 @@ function nearestHexCenter(p: Point): Point {
 /** Kantenlänge eines Tokens in Kartenpixeln. */
 export function tokenPixelSize(grid: GridData, size: number): number {
 	return grid.size * size;
+}
+
+/**
+ * Abstand zweier Punkte in Feldern, gemessen von Feldmitte zu Feldmitte.
+ * Quadrate nach der Diagonalregel der Szene, Hex-Grids immer nach Hex-Distanz.
+ */
+export function measureCells(
+	grid: GridData,
+	diagonal: MeasureData["diagonal"],
+	a: Point,
+	b: Point,
+): number {
+	const c = grid.size;
+	const local = (p: Point) => ({
+		x: (p.x - grid.offsetX) / c,
+		y: (p.y - grid.offsetY) / c,
+	});
+	const la = local(a);
+	const lb = local(b);
+	if (grid.type === "square") {
+		const dx = Math.abs(Math.floor(lb.x) - Math.floor(la.x));
+		const dy = Math.abs(Math.floor(lb.y) - Math.floor(la.y));
+		const long = Math.max(dx, dy);
+		const short = Math.min(dx, dy);
+		switch (diagonal) {
+			case "equal":
+				return long;
+			case "alternating":
+				return long + Math.floor(short / 2);
+			case "euclidean":
+				return Math.hypot(dx, dy);
+		}
+	}
+	const swap = grid.type === "hexFlat";
+	const ha = hexAxial(swap ? { x: la.y, y: la.x } : la);
+	const hb = hexAxial(swap ? { x: lb.y, y: lb.x } : lb);
+	const dq = hb.q - ha.q;
+	const dr = hb.r - ha.r;
+	return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
+}
+
+/** Axiale Koordinaten des Hexfelds (Spitze oben, Zellbreite 1) unter `p`. */
+function hexAxial(p: Point): { q: number; r: number } {
+	const center = nearestHexCenter(p);
+	const r = Math.round(center.y / (SQRT3 / 2));
+	return { q: Math.round(center.x - r / 2), r };
+}
+
+/** Messung in Feldern und in der Einheit der Szene. */
+export function measureDistance(
+	grid: GridData,
+	measure: MeasureData,
+	a: Point,
+	b: Point,
+): { cells: number; distance: number } {
+	const cells = measureCells(grid, measure.diagonal, a, b);
+	return { cells, distance: cells * measure.perCell };
 }

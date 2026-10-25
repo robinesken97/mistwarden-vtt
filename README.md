@@ -47,6 +47,13 @@ Dann `http://localhost:5173` öffnen, mit dem GM-Passwort anmelden, einen Raum a
 - Fog wird ausschließlich als Polygone gespeichert, nie als Pixelmaske.
 - Für Spieler ist der Fog deckender, langsam ziehender Nebel (Shader), für die Spielleitung halbtransparent. Die Animation lässt sich pro Gerät unter „Darstellung“ abschalten.
 
+### Würfel, Ping, Messen, Zeichnen
+
+- **Würfel:** „Würfel“ öffnet das Log des Raums. Formeln wie `1d20+5`, `4d6kh3` (die drei höchsten behalten), `2d20kl1` (den niedrigsten behalten) oder `d%`; dazu Schnellknöpfe d4 bis d100. Der Server würfelt mit kryptografischem Zufall, Clients schicken nur die Formel. Das Log behält die letzten 200 Würfe. Würfe der Spielleitung sind standardmäßig verdeckt (Schalter im Log) und gehen nie an Spieler.
+- **Ping:** langes Drücken (Touch) bzw. Rechtsklick (Maus) auf eine freie Stelle zeigt allen, die die Szene sehen, einen Ping in der eigenen Farbe. Pings werden nicht gespeichert.
+- **Messen:** „Messen“ wählen und ziehen; gemessen wird von Feldmitte zu Feldmitte in Feldern und in der Einheit der Szene (Standard 5 ft pro Feld). Einheit, Wert pro Feld und Diagonalregel (jede Diagonale 1 Feld, abwechselnd 1-2-1, Luftlinie) stellt die Spielleitung pro Szene im Menü unter „Messen“ ein; auf Hex-Grids zählt die Hex-Distanz. Die Messung sieht nur, wer misst.
+- **Zeichnen:** Freihand, Linie, Rechteck oder Ellipse in drei Strichstärken. Spieler zeichnen in ihrer Farbe und löschen nur eigene Zeichnungen (Radierer antippen bzw. darüberziehen, oder „Meine löschen“); die Spielleitung wählt die Farbe und löscht alle. Zeichnungen gehören zur Szene und folgen ihrer Sichtbarkeit.
+
 Weitere Befehle: `npm test`, `npm run typecheck`, `npm run check` (Lint und Format), `npm run build`.
 
 ### Aufbau

@@ -1,4 +1,11 @@
-import type { AssetMeta, GridData } from "@mistwarden/protocol";
+import {
+	type AssetMeta,
+	type DrawingData,
+	type GridData,
+	type MeasureData,
+	measureDistance,
+	snapToGrid,
+} from "@mistwarden/protocol";
 import {
 	Application,
 	Container,
@@ -9,6 +16,7 @@ import {
 	Texture,
 	type WebGLRenderer,
 } from "pixi.js";
+import { hitDrawing } from "../draw/shapes.ts";
 import { pointInFog } from "../fog/shapes.ts";
 import {
 	attachGestures,
@@ -16,6 +24,7 @@ import {
 	GestureRecognizer,
 } from "../input/gestures.ts";
 import { attachWheelZoom, Camera } from "./camera.ts";
+import { DrawingLayer, type StageDrawing, strokeDrawing } from "./drawings.ts";
 import { FogLayer, type StageFog } from "./fog.ts";
 import { GridLayer } from "./grid.ts";
 import { TileCache } from "./tile-cache.ts";
@@ -28,6 +37,7 @@ import {
 } from "./tiles.ts";
 import { type StageToken, TokenLayer, TokenTextures } from "./tokens.ts";
 
+export type { StageDrawing } from "./drawings.ts";
 export type { StageFog } from "./fog.ts";
 export type { StageToken } from "./tokens.ts";
 
@@ -43,7 +53,24 @@ export type StageTarget = { kind: "token" | "fog"; id: string };
 export type StageTool =
 	| { type: "select" }
 	| { type: "polygon" }
-	| { type: "brush"; radius: number };
+	| { type: "brush"; radius: number }
+	| { type: "measure" }
+	| {
+			type: "draw";
+			shape: DrawingData["shape"];
+			color: string;
+			/** Strichbreite in Weltkoordinaten. */
+			width: number;
+	  }
+	| { type: "erase" };
+
+/** Ergebnis des Messwerkzeugs mit Bildschirmposition für die Beschriftung. */
+export interface StageMeasurement {
+	cells: number;
+	distance: number;
+	unit: string;
+	screen: { x: number; y: number };
+}
 
 /** Rückmeldungen der Spielfläche an die Raumansicht. */
 export interface StageCallbacks {
@@ -61,6 +88,14 @@ export interface StageCallbacks {
 	polygonDone(points: WorldPoint[]): void;
 	/** Pinselstrich beendet; Radius in Weltkoordinaten. */
 	brushDone(stroke: WorldPoint[], radius: number): void;
+	/** Zeichnung fertig: Freihand alle Punkte, Formen Anfang und Ende. */
+	drawDone(shape: DrawingData["shape"], points: WorldPoint[]): void;
+	/** Radierer hat eine (löschbare) Zeichnung getroffen. */
+	erase(drawingId: string): void;
+	/** Langes Drücken bzw. Rechtsklick auf leere Fläche. */
+	ping(world: WorldPoint): void;
+	/** Messung geändert oder beendet (null). */
+	measure(result: StageMeasurement | null): void;
 }
 
 export interface StageScene {
@@ -68,6 +103,7 @@ export interface StageScene {
 	id: string;
 	map: AssetMeta | null;
 	grid: GridData;
+	measure: MeasureData;
 }
 
 export interface Stage {
@@ -76,6 +112,10 @@ export interface Stage {
 	setTokens(tokens: StageToken[]): void;
 	/** Fog-Formen der angezeigten Szene; `gm` = halbtransparent, ausgeschaltete als Umriss. */
 	setFog(fog: StageFog[], gm: boolean): void;
+	/** Zeichnungen der angezeigten Szene. */
+	setDrawings(drawings: StageDrawing[]): void;
+	/** Ping anzeigen (Weltkoordinaten). */
+	showPing(x: number, y: number, color: string): void;
 	setTool(tool: StageTool): void;
 	/** Polygon-Werkzeug: abschließen, letzten Punkt entfernen, verwerfen. */
 	finishPolygon(): void;
@@ -108,6 +148,10 @@ const FOG_FPS_TOUCH = 15;
 const FOG_FPS_DESKTOP = 30;
 /** So nah (Bildschirmpixel) am ersten Punkt schließt ein Tipp das Polygon. */
 const CLOSE_DISTANCE = 18;
+/** Trefferzone des Radierers in Bildschirmpixeln (Finger brauchen Platz). */
+const ERASE_TOLERANCE = 12;
+/** Bildrate der Ping-Animation. */
+const PING_FRAME_MS = 33;
 
 /**
  * Spielfläche mit PixiJS (nur WebGL, kein WebGPU). Rendert nur bei Änderungen,
@@ -155,6 +199,7 @@ export async function createStage(
 	const tokenLayer = new TokenLayer("tokens", textures);
 	// Fog über Karte, Props und Tokens; darüber Notizen, Zeichnungen und die Werkzeug-Vorschau.
 	const fogLayer = new FogLayer();
+	const drawingLayer = new DrawingLayer();
 	const preview = new Graphics({ label: "tool-preview" });
 	world.addChild(
 		mapLayer,
@@ -162,7 +207,7 @@ export async function createStage(
 		tokenLayer.container,
 		fogLayer.container,
 		new Container({ label: "notes" }),
-		new Container({ label: "drawings" }),
+		drawingLayer.container,
 		preview,
 	);
 	app.stage.addChild(world);
@@ -191,6 +236,12 @@ export async function createStage(
 	let tool: StageTool = { type: "select" };
 	let polygon: WorldPoint[] = [];
 	let stroke: WorldPoint[] | null = null;
+	/** Laufende Zeichnung (Freihand: alle Punkte, Formen: Anfang und aktuelles Ende). */
+	let sketch: WorldPoint[] | null = null;
+	/** Messlinie von Feldmitte zu Feldmitte; bleibt nach dem Loslassen stehen. */
+	let ruler: { a: WorldPoint; b: WorldPoint } | null = null;
+	let erasing = false;
+	let pingTimer: ReturnType<typeof setTimeout> | undefined;
 	/** Laufender Zug: entweder ein Token oder die Karte (Kamera). */
 	let drag:
 		| {
@@ -221,6 +272,36 @@ export async function createStage(
 		}
 		return null;
 	};
+
+	/** Oberste löschbare Zeichnung unter dem Finger. */
+	const hitDrawingAt = (sx: number, sy: number): string | null => {
+		const p = camera.screenToWorld(sx, sy);
+		const list = drawingLayer.drawings;
+		for (let i = list.length - 1; i >= 0; i--) {
+			const d = list[i] as StageDrawing;
+			if (d.erasable && hitDrawing(d, p, ERASE_TOLERANCE / camera.zoom)) {
+				return d.id;
+			}
+		}
+		return null;
+	};
+
+	const cellCenter = (sx: number, sy: number): WorldPoint => {
+		const p = camera.screenToWorld(sx, sy);
+		return scene ? snapToGrid(scene.grid, p, 1) : p;
+	};
+
+	function eraseAt(sx: number, sy: number): void {
+		const id = hitDrawingAt(sx, sy);
+		if (id) callbacks.erase(id);
+	}
+
+	function clearRuler(): void {
+		if (!ruler) return;
+		ruler = null;
+		callbacks.measure(null);
+		requestRender();
+	}
 
 	function addPolygonPoint(sx: number, sy: number): void {
 		const first = polygon[0];
@@ -257,11 +338,34 @@ export async function createStage(
 					callbacks.brushDone([camera.screenToWorld(x, y)], tool.radius);
 					return;
 				}
+				if (tool.type === "measure") return clearRuler();
+				if (tool.type === "erase") return eraseAt(x, y);
+				if (tool.type === "draw") {
+					if (tool.shape === "free") {
+						callbacks.drawDone("free", [camera.screenToWorld(x, y)]);
+					}
+					return;
+				}
 				callbacks.select(hitTest(x, y));
 			},
 			dragStart(x, y) {
 				if (tool.type === "brush") {
 					stroke = [camera.screenToWorld(x, y)];
+					return;
+				}
+				if (tool.type === "measure") {
+					const a = cellCenter(x, y);
+					ruler = { a, b: a };
+					requestRender();
+					return;
+				}
+				if (tool.type === "draw") {
+					sketch = [camera.screenToWorld(x, y)];
+					return;
+				}
+				if (tool.type === "erase") {
+					erasing = true;
+					eraseAt(x, y);
 					return;
 				}
 				// Im Polygon-Werkzeug verschiebt Ziehen mit einem Finger die Karte.
@@ -287,6 +391,22 @@ export async function createStage(
 					requestRender();
 					return;
 				}
+				if (ruler && tool.type === "measure") {
+					ruler.b = cellCenter(x, y);
+					requestRender();
+					return;
+				}
+				if (sketch && tool.type === "draw") {
+					const p = camera.screenToWorld(x, y);
+					if (tool.shape === "free") sketch.push(p);
+					else sketch = [sketch[0] as WorldPoint, p];
+					requestRender();
+					return;
+				}
+				if (erasing) {
+					eraseAt(x, y);
+					return;
+				}
 				if (drag?.type === "token") {
 					const p = camera.screenToWorld(x, y);
 					drag.x = p.x - drag.offsetX;
@@ -306,6 +426,14 @@ export async function createStage(
 					requestRender();
 					return;
 				}
+				if (sketch && tool.type === "draw") {
+					const done = sketch;
+					sketch = null;
+					callbacks.drawDone(tool.shape, done);
+					requestRender();
+					return;
+				}
+				erasing = false;
 				const done = drag;
 				drag = null;
 				if (done?.type === "token") {
@@ -316,11 +444,15 @@ export async function createStage(
 			dragCancel() {
 				drag = null;
 				stroke = null;
+				sketch = null;
+				erasing = false;
 				requestRender();
 			},
 			context(x, y) {
-				if (tool.type !== "select") return;
-				callbacks.context(hitTest(x, y), { x, y });
+				if (tool.type === "polygon" || tool.type === "brush") return;
+				const target = tool.type === "select" ? hitTest(x, y) : null;
+				if (tool.type === "select") callbacks.context(target, { x, y });
+				if (!target) callbacks.ping(camera.screenToWorld(x, y));
 			},
 			pinch(midX, midY, factor, dx, dy) {
 				camera.panBy(dx, dy);
@@ -410,6 +542,10 @@ export async function createStage(
 		fogLayer.set(fog, fogGm, 1.5 / camera.zoom);
 		fogLayer.update(view, scene?.grid.size ?? 100, animateFog ? seconds : 0);
 		drawPreview();
+		clearTimeout(pingTimer);
+		if (drawingLayer.updatePings(performance.now(), camera.zoom)) {
+			pingTimer = setTimeout(requestRender, PING_FRAME_MS);
+		}
 		app.render();
 
 		clearTimeout(animationTimer);
@@ -445,6 +581,42 @@ export async function createStage(
 				alpha: 0.45,
 				cap: "round",
 				join: "round",
+			});
+		}
+		if (sketch && tool.type === "draw") {
+			const first = sketch[0] as WorldPoint;
+			const last = sketch[sketch.length - 1] as WorldPoint;
+			const points =
+				tool.shape === "free"
+					? sketch.flatMap((p) => [p.x, p.y])
+					: [first.x, first.y, last.x, last.y];
+			strokeDrawing(
+				g,
+				{ shape: tool.shape, points },
+				tool.color,
+				tool.width,
+				0.9,
+			);
+		}
+		if (ruler && scene) {
+			const { a, b } = ruler;
+			g.moveTo(a.x, a.y)
+				.lineTo(b.x, b.y)
+				.stroke({ width: 6 / camera.zoom, color: 0x000000, alpha: 0.5 });
+			g.moveTo(a.x, a.y)
+				.lineTo(b.x, b.y)
+				.stroke({ width: 3 / camera.zoom, color: 0xffd23f });
+			for (const p of [a, b]) {
+				g.circle(p.x, p.y, 5 / camera.zoom).fill({ color: 0xffd23f });
+			}
+			const result = measureDistance(scene.grid, scene.measure, a, b);
+			callbacks.measure({
+				...result,
+				unit: scene.measure.unit,
+				screen: {
+					x: (b.x - camera.x) * camera.zoom,
+					y: (b.y - camera.y) * camera.zoom,
+				},
 			});
 		}
 	}
@@ -493,6 +665,7 @@ export async function createStage(
 				for (const sprite of sprites.values()) sprite.destroy();
 				sprites.clear();
 			}
+			if (scene?.id !== next?.id) clearRuler();
 			scene = next;
 			if (refit && next) {
 				const { width, height } = viewSize();
@@ -512,8 +685,19 @@ export async function createStage(
 			fogGm = gm;
 			requestRender();
 		},
+		setDrawings(next) {
+			drawingLayer.set(next);
+			requestRender();
+		},
+		showPing(x, y, color) {
+			drawingLayer.ping(x, y, color, performance.now());
+			requestRender();
+		},
 		setTool(next) {
 			tool = next;
+			sketch = null;
+			erasing = false;
+			if (next.type !== "measure") clearRuler();
 			if (next.type !== "polygon" && polygon.length > 0) {
 				polygon = [];
 				callbacks.polygonChanged(0);
@@ -552,7 +736,9 @@ export async function createStage(
 		destroy() {
 			cancelAnimationFrame(frame);
 			clearTimeout(animationTimer);
+			clearTimeout(pingTimer);
 			fogLayer.destroy();
+			drawingLayer.destroy();
 			detachGestures();
 			detachWheel();
 			cache.destroy();

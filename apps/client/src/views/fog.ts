@@ -29,6 +29,8 @@ export interface FogToolsContext {
 		setAnimateFog(on: boolean): void;
 	} | null;
 	changed(): void;
+	/** Ein Fog-Werkzeug (oder Auswählen) wurde gewählt; andere Werkzeuge zurücksetzen. */
+	toolTaken(): void;
 }
 
 type ToolName = "select" | "polygon" | "brush";
@@ -38,6 +40,8 @@ const BRUSH_SIZES = [0.25, 0.5, 1, 2, 3];
 
 export function createFogTools(ctx: FogToolsContext) {
 	let tool: ToolName = "select";
+	/** Gerade ist ein Werkzeug außerhalb dieser Leiste aktiv (Messen, Zeichnen). */
+	let away = false;
 	let brushCells = 0.5;
 	let polygonPoints = 0;
 	let selectedId: string | null = null;
@@ -120,7 +124,9 @@ export function createFogTools(ctx: FogToolsContext) {
 	}
 
 	function setTool(next: ToolName): void {
+		ctx.toolTaken();
 		tool = next;
+		away = false;
 		if (next !== "select") selectedId = null;
 		ctx.stage()?.setTool(stageTool());
 		ctx.changed();
@@ -292,7 +298,7 @@ export function createFogTools(ctx: FogToolsContext) {
 
 	function render(): void {
 		for (const [name, b] of toolButtons) {
-			b.classList.toggle("active", name === tool);
+			b.classList.toggle("active", name === tool && !away);
 		}
 		drawBar.hidden = tool === "select";
 		polygonGroup.hidden = tool !== "polygon";
@@ -358,6 +364,13 @@ export function createFogTools(ctx: FogToolsContext) {
 		stageTool,
 		select,
 		render,
+		setTool,
+		/** Ein anderes Werkzeug ist jetzt aktiv: eigene Leisten schließen. */
+		reset() {
+			tool = "select";
+			away = true;
+			render();
+		},
 		animate: () => animate,
 		toolSwitch,
 		drawBar,

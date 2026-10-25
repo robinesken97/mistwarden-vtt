@@ -1,12 +1,18 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import {
 	type Action,
+	AUDIENCE_ALL,
 	type Change,
 	CLOSE_PROTOCOL,
 	CLOSE_UNAUTHORIZED,
 	ClientMessageSchema,
 	type ErrorCode,
+	GM_COLOR,
 	type Identity,
+	type PlayerData,
+	parseDice,
+	type RollData,
+	rollDice,
 	type ServerMessage,
 } from "@mistwarden/protocol";
 import type { WebSocket, WebSocketServer } from "ws";
@@ -23,12 +29,16 @@ import {
 const HELLO_TIMEOUT_MS = 10_000;
 /** Abstand der Protokoll-Pings, mit denen tote Verbindungen erkannt werden. */
 const HEARTBEAT_MS = 30_000;
+/** Pings pro Verbindung: so viele auf einmal, danach einer je POINTER_REFILL_MS. */
+export const POINTER_BURST = 4;
+const POINTER_REFILL_MS = 250;
 
 interface Connection {
 	ws: WebSocket;
 	roomId: string;
 	identity: Identity;
 	alive: boolean;
+	pointer: { tokens: number; at: number };
 }
 
 /**
@@ -116,7 +126,16 @@ export class Hub {
 				ws.close(CLOSE_PROTOCOL);
 				return;
 			}
-			this.#action(conn, msg.actionId, msg.action);
+			switch (msg.type) {
+				case "action":
+					this.#action(conn, msg.actionId, msg.action);
+					return;
+				case "roll":
+					this.#roll(conn, msg.actionId, msg.formula, msg.hidden);
+					return;
+				case "pointer":
+					this.#pointer(conn, msg.sceneId, msg.x, msg.y);
+			}
 		});
 	}
 
@@ -170,7 +189,13 @@ export class Hub {
 		}
 
 		// Alles synchron: zwischen Nachholen und Registrieren kann keine Änderung durchrutschen.
-		const conn: Connection = { ws, roomId: room.id, identity, alive: true };
+		const conn: Connection = {
+			ws,
+			roomId: room.id,
+			identity,
+			alive: true,
+			pointer: { tokens: POINTER_BURST, at: Date.now() },
+		};
 		let conns = this.#rooms.get(room.id);
 		if (!conns) {
 			conns = new Set();
@@ -180,12 +205,18 @@ export class Hub {
 		return conn;
 	}
 
-	#action(conn: Connection, actionId: string, action: Action): void {
+	#action(
+		conn: Connection,
+		actionId: string,
+		action: Action,
+		trusted = false,
+	): void {
 		const result = this.#changelog.apply(
 			conn.roomId,
 			conn.identity,
 			actionId,
 			action,
+			{ trusted },
 		);
 		switch (result.status) {
 			case "rejected":
@@ -198,6 +229,77 @@ export class Hub {
 			case "applied":
 				this.#broadcast(conn.roomId, result.version, result.changes);
 				send(conn.ws, { type: "ack", actionId, version: result.version });
+		}
+	}
+
+	/** Würfelt serverseitig mit kryptografischem Zufall und legt den Wurf im Log ab. */
+	#roll(
+		conn: Connection,
+		actionId: string,
+		formula: string,
+		hidden: boolean,
+	): void {
+		const parsed = parseDice(formula);
+		if (!parsed.ok) {
+			send(conn.ws, { type: "reject", actionId, reason: "invalid" });
+			return;
+		}
+		const { terms, total } = rollDice(parsed.terms, (sides) =>
+			randomInt(1, sides + 1),
+		);
+		const data: RollData = {
+			authorId: conn.identity.role === "gm" ? null : conn.identity.playerId,
+			formula: parsed.formula,
+			terms,
+			total,
+			hidden,
+			at: Date.now(),
+		};
+		this.#action(
+			conn,
+			actionId,
+			{
+				op: "create",
+				kind: "roll",
+				id: randomUUID(),
+				data,
+				audience: hidden ? { type: "gm" } : AUDIENCE_ALL,
+			},
+			true,
+		);
+	}
+
+	/** Verteilt einen Ping an alle, die die Szene sehen; zu viele werden verworfen. */
+	#pointer(conn: Connection, sceneId: string, x: number, y: number): void {
+		const now = Date.now();
+		const bucket = conn.pointer;
+		bucket.tokens = Math.min(
+			POINTER_BURST,
+			bucket.tokens + (now - bucket.at) / POINTER_REFILL_MS,
+		);
+		bucket.at = now;
+		if (bucket.tokens < 1) return;
+		bucket.tokens -= 1;
+
+		const scene = this.#changelog.get(conn.roomId, "scene", sceneId);
+		if (!scene || !canSee(conn.identity, scene.audience)) return;
+		let playerId: string | null = null;
+		let color = GM_COLOR;
+		if (conn.identity.role === "player") {
+			playerId = conn.identity.playerId;
+			const player = this.#changelog.get(conn.roomId, "player", playerId);
+			color = (player?.data as PlayerData | undefined)?.color ?? GM_COLOR;
+		}
+		const msg: ServerMessage = {
+			type: "pointer",
+			sceneId,
+			x: Math.round(x),
+			y: Math.round(y),
+			playerId,
+			color,
+		};
+		for (const other of this.#rooms.get(conn.roomId) ?? []) {
+			if (canSee(other.identity, scene.audience)) send(other.ws, msg);
 		}
 	}
 

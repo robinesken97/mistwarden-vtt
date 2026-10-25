@@ -1,5 +1,6 @@
 // Raumansicht: Spielfläche (PixiJS) über die ganze Seite, darüber eine Statusleiste und
 // ein Menü mit Spielern und – für die GM – Szenen, Karte, Grid, Tokens, Fog und Spieler-Link.
+// Messen, Zeichnen, Pings und Würfel stehen allen zur Verfügung.
 import {
 	type Action,
 	type AssetMeta,
@@ -22,6 +23,7 @@ import type { Stage, StageCallbacks, StageTarget } from "../render/stage.ts";
 import { navigate } from "../router.ts";
 import { storage } from "../storage.ts";
 import { createFogTools } from "./fog.ts";
+import { createTableTools } from "./table.ts";
 import { createTokenTools } from "./tokens.ts";
 
 const statusLabel = {
@@ -186,12 +188,44 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			fog.render();
 			stage?.setFog(fog.stageFog(), isGm);
 		},
+		toolTaken: () => table.reset(),
+	});
+
+	// --- Messen, Zeichnen, Pings, Würfel ---
+	const table = createTableTools({
+		conn,
+		isGm,
+		run,
+		showError: (msg) => error.show(msg),
+		displayedScene,
+		currentGrid,
+		stage: () => stage,
+		toolTaken: () => fog.reset(),
+		selectTool: () => fog.setTool("select"),
+		changed: () => {
+			table.render();
+			updateStage();
+		},
 	});
 
 	hud
 		.querySelector(".hud-slot")
-		?.replaceWith(fog.toolSwitch, tokens.snapButton);
-	roomEl.append(tokens.bar, fog.drawBar, fog.selectBar);
+		?.replaceWith(
+			fog.toolSwitch,
+			table.toolSwitch,
+			table.logButton,
+			tokens.snapButton,
+		);
+	roomEl.append(
+		tokens.bar,
+		fog.drawBar,
+		fog.selectBar,
+		table.drawBar,
+		table.measureBar,
+		table.measureLabel,
+		table.logPanel,
+		table.toast,
+	);
 	panel.insertBefore(fog.settingsSection, error);
 
 	/** Antippen wählt genau ein Objekt aus – Token oder Fog-Fläche. */
@@ -205,6 +239,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		select: selectTarget,
 		context: selectTarget,
 		...fog.callbacks,
+		...table.callbacks,
 	};
 
 	// --- Daten aus dem gespiegelten Raumzustand ---
@@ -570,6 +605,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				{ className: "hint" },
 				"Größe und Versatz in Kartenpixeln. Die Karte bleibt fest, das Grid wird an sie angepasst.",
 			),
+			table.gmMeasureSection,
 			tokens.gmSection,
 			fog.gmSection,
 			h("h2", {}, "Spieler-Link"),
@@ -620,6 +656,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		if (!stage) return;
 		stage.setTokens(tokens.stageTokens());
 		stage.setFog(fog.stageFog(), isGm);
+		stage.setDrawings(table.stageDrawings());
 		const scene = displayedScene();
 		const request = ++stageRequest;
 		if (!scene) {
@@ -628,19 +665,20 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		}
 		const data = scene.data as SceneData;
 		const grid = currentGrid() ?? DEFAULT_GRID;
+		const measure = table.currentMeasure();
 		if (!data.map) {
-			stage.setScene({ id: scene.id, map: null, grid });
+			stage.setScene({ id: scene.id, map: null, grid, measure });
 			return;
 		}
 		assetMeta(data.map)
 			.then((meta) => {
 				if (request === stageRequest) {
-					stage?.setScene({ id: scene.id, map: meta, grid });
+					stage?.setScene({ id: scene.id, map: meta, grid, measure });
 				}
 			})
 			.catch(() => {
 				if (request !== stageRequest) return;
-				stage?.setScene({ id: scene.id, map: null, grid });
+				stage?.setScene({ id: scene.id, map: null, grid, measure });
 				error.show("Kartenbild nicht gefunden.");
 			});
 	}
@@ -710,6 +748,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 		tokens.render();
 		fog.render();
+		table.render();
 		updateStage();
 
 		if (conn.status === "unauthorized") {

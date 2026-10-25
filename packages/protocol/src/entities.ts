@@ -46,6 +46,26 @@ export const DEFAULT_GRID: GridData = {
 	visible: true,
 };
 
+/**
+ * Messen pro Szene: `perCell` Einheiten pro Feld. Diagonalen auf Quadraten:
+ * - equal: jede Diagonale zählt ein Feld
+ * - alternating: abwechselnd ein und zwei Felder (1-2-1)
+ * - euclidean: Luftlinie in Feldern
+ * Auf Hex-Grids gilt immer die Hex-Distanz.
+ */
+export const MeasureSchema = z.strictObject({
+	perCell: z.number().positive().max(10_000),
+	unit: z.string().trim().min(1).max(8),
+	diagonal: z.enum(["equal", "alternating", "euclidean"]),
+});
+export type MeasureData = z.infer<typeof MeasureSchema>;
+
+export const DEFAULT_MEASURE: MeasureData = {
+	perCell: 5,
+	unit: "ft",
+	diagonal: "equal",
+};
+
 export const SceneSchema = z.strictObject({
 	name: z.string().trim().min(1).max(100),
 	/** Reihenfolge in der Szenenliste. */
@@ -53,6 +73,7 @@ export const SceneSchema = z.strictObject({
 	/** Asset-ID des Kartenbilds oder null für eine leere Szene. */
 	map: IdSchema.nullable().default(null),
 	grid: GridSchema.default(DEFAULT_GRID),
+	measure: MeasureSchema.default(DEFAULT_MEASURE),
 });
 export type SceneData = z.infer<typeof SceneSchema>;
 
@@ -134,12 +155,91 @@ export const FogSchema = z
 	);
 export type FogData = z.infer<typeof FogSchema>;
 
+/** Höchstzahl Koordinaten (x und y zählen einzeln) pro Zeichnung. */
+export const MAX_DRAWING_COORDS = 4000;
+
+/** Farbe der GM für Pings und als Vorgabe beim Zeichnen. */
+export const GM_COLOR = "#e0b050";
+
+const ColorSchema = z.string().regex(/^#[0-9a-f]{6}$/i);
+
+/**
+ * Zeichnung auf einer Szene. `points` ist eine flache Liste [x0, y0, x1, y1, …];
+ * bei Linie, Rechteck und Ellipse genau Anfangs- und Endpunkt (Ecken bzw. umschließendes Rechteck).
+ * Spieler zeichnen nur in ihrer eigenen Farbe.
+ */
+export const DrawingSchema = z
+	.strictObject({
+		sceneId: IdSchema,
+		/** Spieler, dem die Zeichnung gehört; null = GM. */
+		ownerId: IdSchema.nullable(),
+		color: ColorSchema,
+		shape: z.enum(["free", "line", "rect", "ellipse"]),
+		points: z
+			.array(z.number().int().min(-100_000).max(100_000))
+			.min(4)
+			.max(MAX_DRAWING_COORDS)
+			.refine((p) => p.length % 2 === 0, "gerade Anzahl Koordinaten"),
+		width: z.number().min(1).max(100),
+	})
+	.refine(
+		(d) => d.shape === "free" || d.points.length === 4,
+		"Formen haben genau zwei Punkte",
+	);
+export type DrawingData = z.infer<typeof DrawingSchema>;
+
+/** Ein Summand eines Würfelwurfs, wie ihn der Server ausgewürfelt hat. */
+export const RollTermSchema = z.discriminatedUnion("type", [
+	z.strictObject({
+		type: z.literal("dice"),
+		sign: z.union([z.literal(1), z.literal(-1)]),
+		count: z.number().int().min(1).max(100),
+		sides: z.number().int().min(2).max(1000),
+		keep: z
+			.strictObject({
+				mode: z.enum(["h", "l"]),
+				n: z.number().int().min(1).max(100),
+			})
+			.nullable(),
+		results: z.array(z.number().int().min(1).max(1000)).max(100),
+		/** Pro Ergebnis: zählt es zur Summe (false = durch kh/kl verworfen)? */
+		kept: z.array(z.boolean()).max(100),
+	}),
+	z.strictObject({
+		type: z.literal("const"),
+		sign: z.union([z.literal(1), z.literal(-1)]),
+		value: z.number().int().min(0).max(100_000),
+	}),
+]);
+export type RollTerm = z.infer<typeof RollTermSchema>;
+
+/**
+ * Würfelwurf im Log des Raums. Entsteht nur auf dem Server (Clients schicken die Formel);
+ * verdeckte Würfe haben die Audience `gm` und erreichen Spieler nie.
+ */
+export const RollSchema = z.strictObject({
+	/** Würfelnder Spieler; null = GM. */
+	authorId: IdSchema.nullable(),
+	formula: z.string().min(1).max(100),
+	terms: z.array(RollTermSchema).min(1).max(20),
+	total: z.number().int(),
+	hidden: z.boolean(),
+	/** Serverzeit in Millisekunden. */
+	at: z.number().int().nonnegative(),
+});
+export type RollData = z.infer<typeof RollSchema>;
+
+/** So viele Würfe behält der Server pro Raum; ältere fallen aus dem Log. */
+export const MAX_ROLLS = 200;
+
 export const EntityKindSchema = z.enum([
 	"scene",
 	"roomState",
 	"player",
 	"token",
 	"fog",
+	"drawing",
+	"roll",
 ]);
 export type EntityKind = z.infer<typeof EntityKindSchema>;
 
@@ -150,7 +250,20 @@ export const entitySchemas: Record<EntityKind, z.ZodType<EntityData>> = {
 	player: PlayerSchema,
 	token: TokenSchema,
 	fog: FogSchema,
+	drawing: DrawingSchema,
+	roll: RollSchema,
 };
+
+/** Objektarten, deren Sichtbarkeit aus ihrer Szene folgt. */
+export const SCENE_CHILD_KINDS: readonly EntityKind[] = [
+	"token",
+	"fog",
+	"drawing",
+];
+
+export function isSceneChild(kind: EntityKind): boolean {
+	return SCENE_CHILD_KINDS.includes(kind);
+}
 
 export type EntityData = Record<string, unknown>;
 
