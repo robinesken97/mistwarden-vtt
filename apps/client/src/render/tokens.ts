@@ -22,6 +22,8 @@ export interface StageToken {
 	/** Ringfarbe (Farbe des Besitzers) oder null. */
 	color: string | null;
 	selected: boolean;
+	/** Für Spieler versteckt; die GM sieht es halbtransparent. */
+	hidden: boolean;
 	/** Darf angetippt bzw. gezogen werden (Props gesperrt, fremde Tokens …)? */
 	hittable: boolean;
 }
@@ -104,6 +106,7 @@ export class TokenLayer {
 	#update(view: View, t: StageToken): void {
 		view.root.position.set(t.x, t.y);
 		view.root.angle = t.rotation;
+		view.root.alpha = t.hidden ? 0.45 : 1;
 
 		if (view.textureUrl !== t.textureUrl) {
 			if (view.textureUrl) this.#textures.release(view.textureUrl);

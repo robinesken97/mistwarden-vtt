@@ -19,6 +19,9 @@ export type Audience = z.infer<typeof AudienceSchema>;
 
 export const AUDIENCE_ALL: Audience = { type: "all" };
 
+/** Höchstzahl Koordinaten (x und y zählen einzeln) pro Fog-Form. */
+export const MAX_FOG_COORDS = 40_000;
+
 /**
  * Grid in Kartenpixeln (Stufe 0 der Karte). Die Karte liegt fest im Ursprung;
  * das Grid wird an die Karte angepasst, nicht umgekehrt.
@@ -95,11 +98,48 @@ export type TokenData = z.infer<typeof TokenSchema>;
 /** Felder, die Spieler an eigenen Tokens ändern dürfen. */
 export const PLAYER_TOKEN_FIELDS = ["x", "y", "rotation"] as const;
 
+/** Ring als flache Koordinatenliste [x0, y0, x1, y1, …] in ganzen Kartenpixeln. */
+const RingSchema = z
+	.array(z.number().int().min(-100_000).max(100_000))
+	.min(6)
+	.max(MAX_FOG_COORDS)
+	.refine((r) => r.length % 2 === 0, "gerade Anzahl Koordinaten");
+
+export const FogPolygonSchema = z.strictObject({
+	outer: RingSchema,
+	holes: z.array(RingSchema).max(500),
+});
+export type FogPolygon = z.infer<typeof FogPolygonSchema>;
+
+/**
+ * Fog-Form: deckt ab, solange `active` ist; Aufdecken = ausschalten.
+ * Nur Polygone, nie Pixelmasken – dynamischer Fog, .dd2vtt und Auto-Fog bauen darauf auf.
+ */
+export const FogSchema = z
+	.strictObject({
+		sceneId: IdSchema,
+		polygons: z.array(FogPolygonSchema).min(1).max(500),
+		active: z.boolean(),
+		source: z.enum(["hand", "import", "auto"]),
+		name: z.string().trim().max(40).default(""),
+	})
+	.refine(
+		(f) =>
+			f.polygons.reduce(
+				(n, p) =>
+					n + p.outer.length + p.holes.reduce((m, h) => m + h.length, 0),
+				0,
+			) <= MAX_FOG_COORDS,
+		"zu viele Punkte",
+	);
+export type FogData = z.infer<typeof FogSchema>;
+
 export const EntityKindSchema = z.enum([
 	"scene",
 	"roomState",
 	"player",
 	"token",
+	"fog",
 ]);
 export type EntityKind = z.infer<typeof EntityKindSchema>;
 
@@ -109,6 +149,7 @@ export const entitySchemas: Record<EntityKind, z.ZodType<EntityData>> = {
 	roomState: RoomStateSchema,
 	player: PlayerSchema,
 	token: TokenSchema,
+	fog: FogSchema,
 };
 
 export type EntityData = Record<string, unknown>;

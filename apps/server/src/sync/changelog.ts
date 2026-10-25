@@ -62,8 +62,8 @@ export class ChangeLog {
 			getEntity: db.prepare<[string, string, string], EntityRow>(
 				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind = ? AND id = ?",
 			),
-			sceneTokens: db.prepare<[string, string], EntityRow>(
-				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind = 'token' AND json_extract(data, '$.sceneId') = ?",
+			sceneChildren: db.prepare<[string, string], EntityRow>(
+				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind IN ('token', 'fog') AND json_extract(data, '$.sceneId') = ?",
 			),
 			allEntities: db.prepare<[string], EntityRow>(
 				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? ORDER BY version",
@@ -150,20 +150,20 @@ export class ChangeLog {
 				}
 			}
 
-			// Tokens: Sichtbarkeit wird aus Szene und `hidden` abgeleitet, nie direkt gesetzt.
-			if (action.kind === "token" && after) {
+			// Tokens und Fog: Sichtbarkeit wird aus Szene (und `hidden`) abgeleitet, nie direkt gesetzt.
+			if (isSceneChild(action.kind) && after) {
 				if (action.op !== "delete" && "audience" in action && action.audience) {
 					return { status: "rejected", reason: "invalid" };
 				}
 				const scene = this.#stmts.getEntity.get(
 					roomId,
 					"scene",
-					(after.data as TokenData).sceneId,
+					(after.data as { sceneId: string }).sceneId,
 				);
 				if (!scene) return { status: "rejected", reason: "invalid" };
-				after.audience = tokenAudience(
+				after.audience = childAudience(
 					parseAudience(scene.audience),
-					after.data as TokenData,
+					after.data,
 				);
 			}
 
@@ -204,8 +204,8 @@ export class ChangeLog {
 	}
 
 	/**
-	 * Zieht die Tokens einer Szene nach: Wird die Szene gelöscht, verschwinden ihre Tokens;
-	 * ändert sich ihre Sichtbarkeit, ändert sich die abgeleitete Sichtbarkeit der Tokens.
+	 * Zieht Tokens und Fog einer Szene nach: Wird die Szene gelöscht, verschwinden sie;
+	 * ändert sich ihre Sichtbarkeit, ändert sich die abgeleitete Sichtbarkeit mit.
 	 */
 	#cascadeScene(
 		roomId: string,
@@ -214,22 +214,22 @@ export class ChangeLog {
 		scene: { audience: Audience } | null,
 	): StoredChange[] {
 		const changes: StoredChange[] = [];
-		for (const row of this.#stmts.sceneTokens.all(roomId, sceneId)) {
+		for (const row of this.#stmts.sceneChildren.all(roomId, sceneId)) {
 			const prev = parseAudience(row.audience);
 			if (!scene) {
 				changes.push(
-					this.#write(roomId, actionId, "token", row.id, null, prev),
+					this.#write(roomId, actionId, row.kind, row.id, null, prev),
 				);
 				continue;
 			}
 			const data = parseData(row.data);
-			const audience = tokenAudience(scene.audience, data as TokenData);
+			const audience = childAudience(scene.audience, data);
 			if (JSON.stringify(audience) !== JSON.stringify(prev)) {
 				changes.push(
 					this.#write(
 						roomId,
 						actionId,
-						"token",
+						row.kind,
 						row.id,
 						{ data, audience },
 						prev,
@@ -322,12 +322,18 @@ export class ChangeLog {
 	}
 }
 
-/** Verdeckte Szene oder verdecktes Token: nur GM; sonst sieht es, wer die Szene sieht. */
-export function tokenAudience(
-	scene: Audience,
-	token: Pick<TokenData, "hidden">,
-): Audience {
-	return token.hidden || scene.type === "gm" ? { type: "gm" } : scene;
+/** Objektarten, deren Sichtbarkeit aus ihrer Szene folgt. */
+function isSceneChild(kind: EntityKind): boolean {
+	return kind === "token" || kind === "fog";
+}
+
+/**
+ * Verdeckte Szene oder verstecktes Objekt (`hidden`, z. B. ein Token): nur GM;
+ * sonst sieht es, wer die Szene sieht.
+ */
+export function childAudience(scene: Audience, data: EntityData): Audience {
+	const hidden = (data as Partial<Pick<TokenData, "hidden">>).hidden === true;
+	return hidden || scene.type === "gm" ? { type: "gm" } : scene;
 }
 
 // Die Datenbank enthält nur Werte, die vorher gegen die Schemas geprüft wurden.

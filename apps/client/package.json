@@ -12,6 +12,7 @@
 	},
 	"dependencies": {
 		"@mistwarden/protocol": "^0.0.0",
+		"clipper2-ts": "^2.0.1",
 		"pixi.js": "^8.22.0"
 	},
 	"devDependencies": {

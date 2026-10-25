@@ -13,7 +13,7 @@ import {
 import { api, assetMeta, errorText } from "../api.ts";
 import { button, h } from "../dom.ts";
 import type { SyncConnection } from "../net/connection.ts";
-import type { StageCallbacks, StageToken } from "../render/stage.ts";
+import type { StageToken, WorldPoint } from "../render/stage.ts";
 
 export interface TokenToolsContext {
 	conn: SyncConnection;
@@ -108,6 +108,7 @@ export function createTokenTools(ctx: TokenToolsContext) {
 				textureUrl: m ? tileUrl(m.id, m.levels - 1, 0, 0) : null,
 				color: t.ownerId ? (players.get(t.ownerId) ?? null) : null,
 				selected: e.id === selectedId,
+				hidden: t.hidden === true,
 				hittable: canMove(e),
 			};
 		});
@@ -140,23 +141,20 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		ctx.changed();
 	}
 
-	const callbacks: StageCallbacks = {
-		canDrag: (id) => {
-			const e = byId(id);
-			return e !== undefined && canMove(e);
-		},
-		select,
-		context: (id) => select(id),
-		drop(id, world, free) {
-			const e = byId(id);
-			const grid = ctx.currentGrid();
-			if (!e || !grid) return;
-			const t = tokenData(e);
-			const pos = snapping && !free ? snapToGrid(grid, world, t.size) : world;
-			selectedId = id;
-			update(id, { x: round(pos.x), y: round(pos.y) });
-		},
-	};
+	function canDrag(id: string): boolean {
+		const e = byId(id);
+		return e !== undefined && canMove(e);
+	}
+
+	function drop(id: string, world: WorldPoint, free: boolean): void {
+		const e = byId(id);
+		const grid = ctx.currentGrid();
+		if (!e || !grid) return;
+		const t = tokenData(e);
+		const pos = snapping && !free ? snapToGrid(grid, world, t.size) : world;
+		selectedId = id;
+		update(id, { x: round(pos.x), y: round(pos.y) });
+	}
 
 	function rotate(delta: number): void {
 		const e = byId(selectedId);
@@ -241,12 +239,22 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		},
 		"secondary",
 	);
+	// Versteckt: Spieler bekommen das Token gar nicht erst übertragen.
+	const hideButton = button(
+		"",
+		() => {
+			const e = byId(selectedId);
+			if (e) update(e.id, { hidden: !tokenData(e).hidden }, false);
+		},
+		"secondary",
+	);
 	const gmControls = h(
 		"span",
 		{ className: "bar-group" },
 		h("label", {}, "Größe ", sizeSelect),
 		h("label", {}, "Besitzer ", ownerSelect),
 		layerButton,
+		hideButton,
 		button(
 			"Umbenennen",
 			() => {
@@ -411,12 +419,15 @@ export function createTokenTools(ctx: TokenToolsContext) {
 				}),
 			),
 		);
+		hideButton.textContent = t.hidden ? "Für Spieler zeigen" : "Verstecken";
 		layerButton.textContent =
 			t.layer === "props" ? "Zu Token machen" : "Zu Prop machen";
 	}
 
 	return {
-		callbacks,
+		canDrag,
+		drop,
+		select,
 		stageTokens,
 		render,
 		snapButton,

@@ -2,7 +2,7 @@
 
 Ein selbst gehostetes, schlankes Virtual Tabletop für die eigene Runde: Karten, Tokens, Fog und Würfel im Browser, ohne Upload-Limits und ohne Abo. Die Daten bleiben auf dem eigenen Server.
 
-> **Status:** frühe Entwicklung (Stufe 1, Schritt 4: Tokens). Noch nicht spielbar – Fog, Würfel, Ping und Messen folgen.
+> **Status:** frühe Entwicklung (Stufe 1, Schritt 5: statischer Fog). Noch nicht spielbar – Würfel, Ping, Messen und Zeichnen folgen.
 
 Ziele, Umfang und Architektur stehen in [SPEC.md](SPEC.md).
 
@@ -38,7 +38,14 @@ Dann `http://localhost:5173` öffnen, mit dem GM-Passwort anmelden, einen Raum a
 - Spieler bewegen und drehen nur ihre eigenen Tokens; alles andere prüft der Server. Props bewegt nur die Spielleitung, und nur wenn „Props sperren“ aus ist.
 - Tokens rasten am Grid ein (Quadrate: ungerade Größen in die Feldmitte, gerade auf den Kreuzungspunkt; Hex: Feldmitte). Freies Setzen: Alt-Taste beim Loslassen oder Schalter „Einrasten: aus“.
 - Bedienung: antippen bzw. klicken wählt aus, ziehen verschiebt das eigene Token, sonst die Karte; zwei Finger oder Mausrad zoomen; langes Drücken bzw. Rechtsklick öffnet die Auswahl.
-- Tokens einer verdeckten Szene sind für Spieler unsichtbar und werden ihnen nicht übertragen.
+- Tokens einer verdeckten Szene sind für Spieler unsichtbar und werden ihnen nicht übertragen. Einzelne Tokens kann die Spielleitung auch ohne Fog verstecken („Verstecken“); Spieler bekommen sie dann gar nicht erst.
+
+### Fog
+
+- Fog-Flächen decken ab; zum Aufdecken schaltet die Spielleitung eine Fläche aus (und kann sie wieder einschalten). Freischneiden aus einer Fläche kommt in Stufe 2.
+- Zeichnen mit „Fog: Polygon“ (Ecken antippen, auf den ersten Punkt tippen oder „Fertig“; am Laptop Enter, Escape, Backspace) oder „Fog: Pinsel“ (Größe in Feldern). Beim Zeichnen verschieben und zoomen zwei Finger bzw. das Mausrad.
+- Fog wird ausschließlich als Polygone gespeichert, nie als Pixelmaske.
+- Für Spieler ist der Fog deckender, langsam ziehender Nebel (Shader), für die Spielleitung halbtransparent. Die Animation lässt sich pro Gerät unter „Darstellung“ abschalten.
 
 Weitere Befehle: `npm test`, `npm run typecheck`, `npm run check` (Lint und Format), `npm run build`.
 

@@ -369,9 +369,33 @@ input.num {
 	align-items: center;
 }
 
+/* `hidden` muss gegen display: inline-flex gewinnen. */
+.bar-group[hidden],
+.selection-bar [hidden] {
+	display: none;
+}
+
 .bar-name {
 	max-width: 12rem;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+/* --- Werkzeug-Umschalter (GM) --- */
+
+.tool-switch {
+	display: inline-flex;
+	gap: 0.25rem;
+	flex-wrap: wrap;
+}
+
+.tool-switch[hidden] {
+	display: none;
+}
+
+.tool-switch button.active {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: #fff;
 }

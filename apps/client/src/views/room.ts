@@ -1,5 +1,5 @@
 // Raumansicht: Spielfläche (PixiJS) über die ganze Seite, darüber eine Statusleiste und
-// ein Menü mit Spielern und – für die GM – Szenen, Karte, Grid, Tokens und Spieler-Link.
+// ein Menü mit Spielern und – für die GM – Szenen, Karte, Grid, Tokens, Fog und Spieler-Link.
 import {
 	type Action,
 	type AssetMeta,
@@ -18,9 +18,10 @@ import {
 	defaultSocketUrl,
 	SyncConnection,
 } from "../net/connection.ts";
-import type { Stage } from "../render/stage.ts";
+import type { Stage, StageCallbacks, StageTarget } from "../render/stage.ts";
 import { navigate } from "../router.ts";
 import { storage } from "../storage.ts";
+import { createFogTools } from "./fog.ts";
 import { createTokenTools } from "./tokens.ts";
 
 const statusLabel = {
@@ -171,8 +172,40 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			stage?.setTokens(tokens.stageTokens());
 		},
 	});
-	hud.querySelector(".hud-slot")?.replaceWith(tokens.snapButton);
-	roomEl.append(tokens.bar);
+
+	// --- Fog ---
+	const fog = createFogTools({
+		conn,
+		isGm,
+		run,
+		showError: (msg) => error.show(msg),
+		displayedScene,
+		currentGrid,
+		stage: () => stage,
+		changed: () => {
+			fog.render();
+			stage?.setFog(fog.stageFog(), isGm);
+		},
+	});
+
+	hud
+		.querySelector(".hud-slot")
+		?.replaceWith(fog.toolSwitch, tokens.snapButton);
+	roomEl.append(tokens.bar, fog.drawBar, fog.selectBar);
+	panel.insertBefore(fog.settingsSection, error);
+
+	/** Antippen wählt genau ein Objekt aus – Token oder Fog-Fläche. */
+	const selectTarget = (target: StageTarget | null) => {
+		tokens.select(target?.kind === "token" ? target.id : null);
+		fog.select(target?.kind === "fog" ? target.id : null);
+	};
+	const stageCallbacks: StageCallbacks = {
+		canDrag: tokens.canDrag,
+		drop: tokens.drop,
+		select: selectTarget,
+		context: selectTarget,
+		...fog.callbacks,
+	};
 
 	// --- Daten aus dem gespiegelten Raumzustand ---
 	function entitiesOf(kind: Entity["kind"]): Entity[] {
@@ -538,6 +571,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				"Größe und Versatz in Kartenpixeln. Die Karte bleibt fest, das Grid wird an sie angepasst.",
 			),
 			tokens.gmSection,
+			fog.gmSection,
 			h("h2", {}, "Spieler-Link"),
 			linkBox,
 			h(
@@ -566,13 +600,15 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 	// --- Spielfläche ---
 	import("../render/stage.ts")
-		.then(({ createStage }) => createStage(stageHost, tokens.callbacks))
+		.then(({ createStage }) => createStage(stageHost, stageCallbacks))
 		.then((s) => {
 			if (disposed) {
 				s.destroy();
 				return;
 			}
 			stage = s;
+			s.setTool(fog.stageTool());
+			s.setAnimateFog(fog.animate());
 			updateStage();
 		})
 		.catch((err: unknown) => {
@@ -583,6 +619,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	function updateStage(): void {
 		if (!stage) return;
 		stage.setTokens(tokens.stageTokens());
+		stage.setFog(fog.stageFog(), isGm);
 		const scene = displayedScene();
 		const request = ++stageRequest;
 		if (!scene) {
@@ -672,6 +709,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		}
 
 		tokens.render();
+		fog.render();
 		updateStage();
 
 		if (conn.status === "unauthorized") {
@@ -708,6 +746,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		if (disposed) return;
 		disposed = true;
 		clearTimeout(gridTimer);
+		fog.destroy();
 		conn.stop();
 		stage?.destroy();
 		stage = null;

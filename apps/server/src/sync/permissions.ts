@@ -81,6 +81,15 @@ const rules: Record<EntityKind, Rule> = {
 		return "ok";
 	},
 
+	// Fog zeichnet und schaltet nur die GM; eine Form wechselt nie die Szene.
+	fog: (identity, req) => {
+		if (!isGm(identity)) return "forbidden";
+		const before = req.before?.data as { sceneId: string } | undefined;
+		const after = req.after?.data as { sceneId: string } | undefined;
+		if (before && after && before.sceneId !== after.sceneId) return "invalid";
+		return "ok";
+	},
+
 	// Spieler entstehen nur über den Spieler-Link (serverseitig mit GM-Rechten).
 	player: (identity, req) => {
 		if (!isGm(identity)) return "forbidden";
