@@ -399,3 +399,215 @@ input.num {
 	border-color: var(--accent);
 	color: #fff;
 }
+
+/* --- Zeichnen, Messen, Würfel --- */
+.selection-bar button.active {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+button.swatch {
+	width: 2rem;
+	height: 2rem;
+	min-height: 0;
+	padding: 0;
+	border: 2px solid var(--line);
+}
+
+.measure-label {
+	position: absolute;
+	top: 0;
+	left: 0;
+	padding: 0.2rem 0.5rem;
+	font-weight: 600;
+	color: #1d1b19;
+	background: #ffd23f;
+	border-radius: 6px;
+	box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+	pointer-events: none;
+	white-space: nowrap;
+}
+
+.measure-label[hidden],
+.log-panel[hidden],
+.roll-toast[hidden] {
+	display: none;
+}
+
+.log-panel {
+	position: absolute;
+	top: 3.75rem;
+	left: max(0.5rem, env(safe-area-inset-left));
+	bottom: max(4.5rem, env(safe-area-inset-bottom));
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	width: min(22rem, calc(100vw - 1rem));
+	padding: 0.25rem 0.75rem 0.75rem;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+}
+
+.log-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.roll-log {
+	flex: 1;
+	min-height: 4rem;
+	margin: 0;
+	padding: 0;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+	list-style: none;
+}
+
+.roll {
+	padding: 0.35rem 0;
+	border-bottom: 1px solid var(--line);
+	overflow-wrap: anywhere;
+}
+
+.hidden-roll {
+	opacity: 0.75;
+	font-style: italic;
+}
+
+.roll-head .badge {
+	margin-left: 0.5rem;
+}
+
+.roll-formula {
+	color: var(--muted);
+}
+
+.roll-total {
+	font-size: 1.15em;
+}
+
+.dropped {
+	color: var(--muted);
+}
+
+.quick-dice {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+}
+
+.roll-form {
+	display: flex;
+	gap: 0.5rem;
+}
+
+.roll-form input {
+	flex: 1;
+	min-width: 0;
+}
+
+.roll-toast {
+	position: absolute;
+	top: 3.75rem;
+	left: 50%;
+	transform: translateX(-50%);
+	max-width: calc(100vw - 2rem);
+	padding: 0.4rem 0.9rem;
+	font-weight: 600;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+	pointer-events: none;
+}
+
+/* --- Notizen und Handouts --- */
+.card-overlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: max(1rem, env(safe-area-inset-top)) 1rem
+		max(1rem, env(safe-area-inset-bottom));
+	background: rgb(0 0 0 / 0.35);
+}
+
+.card-overlay[hidden] {
+	display: none;
+}
+
+.card {
+	display: flex;
+	flex-direction: column;
+	width: min(36rem, 100%);
+	max-height: 100%;
+	padding: 0.5rem 1rem 1rem;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+
+.card-close {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.card-body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+.card-body h2 {
+	margin: 0;
+}
+
+.card-body textarea {
+	width: 100%;
+	font: inherit;
+	resize: vertical;
+}
+
+.card-text {
+	margin: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+
+.handout-image {
+	position: relative;
+	width: 100%;
+	background: var(--line);
+}
+
+.handout-image img {
+	position: absolute;
+	display: block;
+}
+
+.handout-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.handout-list li {
+	margin: 0.25rem 0;
+}
+
+.handout-picks {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+}
+
+.handout-picks[hidden] {
+	display: none;
+}

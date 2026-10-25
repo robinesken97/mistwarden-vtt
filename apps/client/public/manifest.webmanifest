@@ -1,0 +1,22 @@
+{
+	"name": "Mistwarden",
+	"short_name": "Mistwarden",
+	"description": "Schlankes, selbst gehostetes Virtual Tabletop",
+	"lang": "de",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"orientation": "any",
+	"background_color": "#1b1a1d",
+	"theme_color": "#2a2540",
+	"icons": [
+		{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+		{ "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+		{
+			"src": "/icons/icon-maskable-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		}
+	]
+}

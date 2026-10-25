@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_FORMULA_LENGTH } from "./dice.ts";
 import {
 	AudienceSchema,
 	type Entity,
@@ -53,6 +54,21 @@ export const ClientMessageSchema = z.discriminatedUnion("type", [
 		action: ActionSchema,
 	}),
 	z.object({ type: z.literal("ping") }),
+	/** Würfeln: der Client schickt nur die Formel, der Server würfelt und schreibt ins Log. */
+	z.object({
+		type: z.literal("roll"),
+		actionId: IdSchema,
+		formula: z.string().max(MAX_FORMULA_LENGTH),
+		/** Verdeckt würfeln darf nur die GM. */
+		hidden: z.boolean(),
+	}),
+	/** Flüchtiger Ping auf einer Szene; landet nicht im Änderungslog. */
+	z.object({
+		type: z.literal("pointer"),
+		sceneId: IdSchema,
+		x: z.number().min(-100_000).max(100_000),
+		y: z.number().min(-100_000).max(100_000),
+	}),
 ]);
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
 
@@ -84,7 +100,16 @@ export type ServerMessage =
 	| { type: "ack"; actionId: string; version: number }
 	| { type: "reject"; actionId: string; reason: RejectReason }
 	| { type: "error"; code: ErrorCode; message: string }
-	| { type: "pong" };
+	| { type: "pong" }
+	/** Ping eines Spielers (playerId) oder der GM (null) für alle, die die Szene sehen. */
+	| {
+			type: "pointer";
+			sceneId: string;
+			x: number;
+			y: number;
+			playerId: string | null;
+			color: string;
+	  };
 
 /** Close-Codes, nach denen der Client nicht automatisch neu verbindet. */
 export const CLOSE_UNAUTHORIZED = 4001;

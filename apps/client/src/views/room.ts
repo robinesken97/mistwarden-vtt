@@ -1,5 +1,6 @@
 // Raumansicht: Spielfläche (PixiJS) über die ganze Seite, darüber eine Statusleiste und
 // ein Menü mit Spielern und – für die GM – Szenen, Karte, Grid, Tokens, Fog und Spieler-Link.
+// Messen, Zeichnen, Pings und Würfel stehen allen zur Verfügung.
 import {
 	type Action,
 	type AssetMeta,
@@ -18,10 +19,15 @@ import {
 	defaultSocketUrl,
 	SyncConnection,
 } from "../net/connection.ts";
+import { History, type UndoResult } from "../net/history.ts";
 import type { Stage, StageCallbacks, StageTarget } from "../render/stage.ts";
 import { navigate } from "../router.ts";
 import { storage } from "../storage.ts";
+import { createCard } from "./card.ts";
 import { createFogTools } from "./fog.ts";
+import { createHandoutTools } from "./handouts.ts";
+import { createNoteTools } from "./notes.ts";
+import { createTableTools } from "./table.ts";
 import { createTokenTools } from "./tokens.ts";
 
 const statusLabel = {
@@ -149,14 +155,64 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	);
 	const roomEl = root.firstElementChild as HTMLElement;
 
+	const showActionError = (err: unknown) =>
+		error.show(
+			err instanceof ActionRejected ? rejectText[err.reason] : String(err),
+		);
+
+	// --- Rückgängig/Wiederholen (eigene Änderungen auf diesem Gerät) ---
+	const history = new History({
+		get: (key) => conn.entities.get(key),
+		send: (action) => conn.send(action),
+	});
+	const undoText: Record<UndoResult, string | null> = {
+		done: null,
+		empty: null,
+		stale: "Nicht mehr möglich: Das Objekt wurde inzwischen geändert.",
+		failed: "Rückgängig/Wiederholen ist fehlgeschlagen.",
+	};
+	async function step(direction: "undo" | "redo"): Promise<void> {
+		error.show(null);
+		const result = await (direction === "undo"
+			? history.undo()
+			: history.redo());
+		error.show(undoText[result]);
+		renderHistory();
+	}
+	const undoButton = button("↶", () => void step("undo"), "secondary");
+	undoButton.title = "Rückgängig (Strg/⌘+Z)";
+	undoButton.setAttribute("aria-label", "Rückgängig");
+	const redoButton = button("↷", () => void step("redo"), "secondary");
+	redoButton.title = "Wiederholen (Strg/⌘+Umschalt+Z)";
+	redoButton.setAttribute("aria-label", "Wiederholen");
+	function renderHistory(): void {
+		undoButton.disabled = !history.canUndo;
+		redoButton.disabled = !history.canRedo;
+	}
+	const historyKeys = (e: KeyboardEvent) => {
+		const target = e.target as HTMLElement | null;
+		if (target?.closest("input, textarea, select")) return;
+		if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+		const key = e.key.toLowerCase();
+		if (key === "z") {
+			e.preventDefault();
+			void step(e.shiftKey ? "redo" : "undo");
+		} else if (key === "y") {
+			e.preventDefault();
+			void step("redo");
+		}
+	};
+	window.addEventListener("keydown", historyKeys);
+
 	const run = (action: Action): Promise<number | undefined> => {
 		error.show(null);
-		return conn.send(action).catch((err: unknown) => {
-			error.show(
-				err instanceof ActionRejected ? rejectText[err.reason] : String(err),
-			);
-			return undefined;
-		});
+		return history
+			.run(action)
+			.catch((err: unknown) => {
+				showActionError(err);
+				return undefined;
+			})
+			.finally(renderHistory);
 	};
 
 	// --- Tokens ---
@@ -186,18 +242,68 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			fog.render();
 			stage?.setFog(fog.stageFog(), isGm);
 		},
+		toolTaken: () => table.reset(),
 	});
+
+	// --- Messen, Zeichnen, Pings, Würfel ---
+	const table = createTableTools({
+		conn,
+		isGm,
+		run,
+		showError: (msg) => error.show(msg),
+		displayedScene,
+		currentGrid,
+		stage: () => stage,
+		toolTaken: () => fog.reset(),
+		selectTool: () => fog.setTool("select"),
+		changed: () => {
+			table.render();
+			updateStage();
+		},
+	});
+
+	// --- Notizen und Handouts ---
+	const card = createCard();
+	const notes = createNoteTools({
+		conn,
+		isGm,
+		run,
+		displayedScene,
+		viewCenter: () => stage?.viewCenter() ?? null,
+		card,
+		changed: () => stage?.setNotes(notes.stageNotes()),
+	});
+	const handouts = createHandoutTools({ conn, roomId, gmToken, run, card });
 
 	hud
 		.querySelector(".hud-slot")
-		?.replaceWith(fog.toolSwitch, tokens.snapButton);
-	roomEl.append(tokens.bar, fog.drawBar, fog.selectBar);
+		?.replaceWith(
+			fog.toolSwitch,
+			table.toolSwitch,
+			table.logButton,
+			handouts.hudButton,
+			undoButton,
+			redoButton,
+			tokens.snapButton,
+		);
+	roomEl.append(
+		tokens.bar,
+		fog.drawBar,
+		fog.selectBar,
+		table.drawBar,
+		table.measureBar,
+		table.measureLabel,
+		table.logPanel,
+		table.toast,
+		card.el,
+	);
 	panel.insertBefore(fog.settingsSection, error);
 
 	/** Antippen wählt genau ein Objekt aus – Token oder Fog-Fläche. */
 	const selectTarget = (target: StageTarget | null) => {
 		tokens.select(target?.kind === "token" ? target.id : null);
 		fog.select(target?.kind === "fog" ? target.id : null);
+		notes.select(target?.kind === "note" ? target.id : null);
 	};
 	const stageCallbacks: StageCallbacks = {
 		canDrag: tokens.canDrag,
@@ -205,6 +311,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		select: selectTarget,
 		context: selectTarget,
 		...fog.callbacks,
+		...table.callbacks,
+		moveNote: notes.moveNote,
 	};
 
 	// --- Daten aus dem gespiegelten Raumzustand ---
@@ -570,8 +678,11 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				{ className: "hint" },
 				"Größe und Versatz in Kartenpixeln. Die Karte bleibt fest, das Grid wird an sie angepasst.",
 			),
+			table.gmMeasureSection,
 			tokens.gmSection,
 			fog.gmSection,
+			notes.gmSection,
+			handouts.gmSection,
 			h("h2", {}, "Spieler-Link"),
 			linkBox,
 			h(
@@ -620,6 +731,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		if (!stage) return;
 		stage.setTokens(tokens.stageTokens());
 		stage.setFog(fog.stageFog(), isGm);
+		stage.setDrawings(table.stageDrawings());
+		stage.setNotes(notes.stageNotes());
 		const scene = displayedScene();
 		const request = ++stageRequest;
 		if (!scene) {
@@ -628,19 +741,20 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		}
 		const data = scene.data as SceneData;
 		const grid = currentGrid() ?? DEFAULT_GRID;
+		const measure = table.currentMeasure();
 		if (!data.map) {
-			stage.setScene({ id: scene.id, map: null, grid });
+			stage.setScene({ id: scene.id, map: null, grid, measure });
 			return;
 		}
 		assetMeta(data.map)
 			.then((meta) => {
 				if (request === stageRequest) {
-					stage?.setScene({ id: scene.id, map: meta, grid });
+					stage?.setScene({ id: scene.id, map: meta, grid, measure });
 				}
 			})
 			.catch(() => {
 				if (request !== stageRequest) return;
-				stage?.setScene({ id: scene.id, map: null, grid });
+				stage?.setScene({ id: scene.id, map: null, grid, measure });
 				error.show("Kartenbild nicht gefunden.");
 			});
 	}
@@ -710,6 +824,10 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 		tokens.render();
 		fog.render();
+		table.render();
+		notes.render();
+		handouts.render();
+		renderHistory();
 		updateStage();
 
 		if (conn.status === "unauthorized") {
@@ -747,6 +865,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		disposed = true;
 		clearTimeout(gridTimer);
 		fog.destroy();
+		card.destroy();
+		window.removeEventListener("keydown", historyKeys);
 		conn.stop();
 		stage?.destroy();
 		stage = null;

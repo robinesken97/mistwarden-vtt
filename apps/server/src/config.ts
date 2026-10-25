@@ -9,6 +9,10 @@ const EnvSchema = z.object({
 	/** Ablage für Originale und Kacheln, z. B. ein Bind-Mount auf das NAS. */
 	ASSET_STORAGE_PATH: z.string().min(1).default("./data/assets"),
 	UPLOAD_MAX_MB: z.coerce.number().int().min(1).max(2000).default(200),
+	/** Größte Raum-Exportdatei beim Import (enthält die Originalbilder als Base64). */
+	IMPORT_MAX_MB: z.coerce.number().int().min(1).max(4000).default(500),
+	/** Gebauter Client (npm run build); leer = Standard apps/client/dist. */
+	CLIENT_DIST_PATH: z.string().optional(),
 	/** Pflicht, ohne Standardwert. Wird beim Start als Argon2-Hash gespeichert. */
 	GM_PASSWORD: z
 		.string({ error: "GM_PASSWORD muss gesetzt sein" })
@@ -24,6 +28,8 @@ export interface Config {
 	databasePath: string;
 	assetStoragePath: string;
 	uploadMaxBytes: number;
+	importMaxBytes: number;
+	clientDistPath: string | undefined;
 	gmPassword: string;
 	trustProxy: boolean;
 }
@@ -43,6 +49,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 		databasePath: e.DATABASE_PATH,
 		assetStoragePath: e.ASSET_STORAGE_PATH,
 		uploadMaxBytes: e.UPLOAD_MAX_MB * 1024 * 1024,
+		importMaxBytes: e.IMPORT_MAX_MB * 1024 * 1024,
+		clientDistPath: e.CLIENT_DIST_PATH || undefined,
 		gmPassword: e.GM_PASSWORD,
 		trustProxy: e.TRUST_PROXY,
 	};

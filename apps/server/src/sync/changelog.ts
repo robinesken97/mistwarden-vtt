@@ -6,6 +6,8 @@ import {
 	type EntityKind,
 	entitySchemas,
 	type Identity,
+	isSceneChild,
+	MAX_ROLLS,
 	type RejectReason,
 	type TokenData,
 } from "@mistwarden/protocol";
@@ -63,7 +65,10 @@ export class ChangeLog {
 				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind = ? AND id = ?",
 			),
 			sceneChildren: db.prepare<[string, string], EntityRow>(
-				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind IN ('token', 'fog') AND json_extract(data, '$.sceneId') = ?",
+				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind IN ('token', 'fog', 'drawing', 'note') AND json_extract(data, '$.sceneId') = ?",
+			),
+			rollsBeyond: db.prepare<[string, number], EntityRow>(
+				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? AND kind = 'roll' ORDER BY version DESC LIMIT -1 OFFSET ?",
 			),
 			allEntities: db.prepare<[string], EntityRow>(
 				"SELECT kind, id, data, audience, version FROM entities WHERE room_id = ? ORDER BY version",
@@ -98,11 +103,30 @@ export class ChangeLog {
 		return row.version;
 	}
 
+	/** Ein Objekt ungefiltert, z. B. die Szene eines Pings. */
+	get(roomId: string, kind: EntityKind, id: string): StoredEntity | undefined {
+		const r = this.#stmts.getEntity.get(roomId, kind, id);
+		return (
+			r && {
+				kind: r.kind,
+				id: r.id,
+				data: parseData(r.data),
+				audience: parseAudience(r.audience),
+				version: r.version,
+			}
+		);
+	}
+
+	/**
+	 * Prüft und übernimmt eine Aktion. `trusted` kennzeichnet Stände, die der Server
+	 * selbst erzeugt hat (ausgewürfelte Würfe); Clients können das nicht setzen.
+	 */
 	apply(
 		roomId: string,
 		identity: Identity,
 		actionId: string,
 		action: Action,
+		opts: { trusted?: boolean } = {},
 	): ApplyResult {
 		return this.#db.transaction((): ApplyResult => {
 			const done = this.#stmts.findAction.get(roomId, actionId)?.version;
@@ -150,7 +174,7 @@ export class ChangeLog {
 				}
 			}
 
-			// Tokens und Fog: Sichtbarkeit wird aus Szene (und `hidden`) abgeleitet, nie direkt gesetzt.
+			// Szenen-Kinder (Tokens, Fog, Zeichnungen, Notizen): Sichtbarkeit wird aus Szene (und `hidden`) abgeleitet, nie direkt gesetzt.
 			if (isSceneChild(action.kind) && after) {
 				if (action.op !== "delete" && "audience" in action && action.audience) {
 					return { status: "rejected", reason: "invalid" };
@@ -172,6 +196,7 @@ export class ChangeLog {
 				id: action.id,
 				before,
 				after,
+				trusted: opts.trusted === true,
 				lookup: (kind, id) => {
 					const r = this.#stmts.getEntity.get(roomId, kind, id);
 					return (
@@ -198,13 +223,28 @@ export class ChangeLog {
 			if (action.kind === "scene") {
 				changes.push(...this.#cascadeScene(roomId, actionId, action.id, after));
 			}
+			if (action.kind === "roll" && action.op === "create") {
+				// Das Log bleibt begrenzt, damit der Anfangszustand klein bleibt.
+				for (const old of this.#stmts.rollsBeyond.all(roomId, MAX_ROLLS)) {
+					changes.push(
+						this.#write(
+							roomId,
+							actionId,
+							"roll",
+							old.id,
+							null,
+							parseAudience(old.audience),
+						),
+					);
+				}
+			}
 			const last = changes[changes.length - 1] as StoredChange;
 			return { status: "applied", version: last.version, changes };
 		})();
 	}
 
 	/**
-	 * Zieht Tokens und Fog einer Szene nach: Wird die Szene gelöscht, verschwinden sie;
+	 * Zieht die Kinder einer Szene (Tokens, Fog, Zeichnungen, Notizen) nach: Wird die Szene gelöscht, verschwinden sie;
 	 * ändert sich ihre Sichtbarkeit, ändert sich die abgeleitete Sichtbarkeit mit.
 	 */
 	#cascadeScene(
@@ -320,11 +360,6 @@ export class ChangeLog {
 			version: r.version,
 		}));
 	}
-}
-
-/** Objektarten, deren Sichtbarkeit aus ihrer Szene folgt. */
-function isSceneChild(kind: EntityKind): boolean {
-	return kind === "token" || kind === "fog";
 }
 
 /**

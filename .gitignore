@@ -20,6 +20,7 @@ assets-store/
 maps/
 *.dd2vtt
 *.uvtt
+exports/
 
 # --- Eigene Testkarten für den Auto-Fog-Prototyp (nur lokal) ---
 autofog/testmaps/

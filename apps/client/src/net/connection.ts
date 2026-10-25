@@ -42,9 +42,13 @@ export class ActionRejected extends Error {
 	}
 }
 
+/** Ping eines Mitspielers, wie ihn der Server verteilt. */
+export type PointerEvent = Extract<ServerMessage, { type: "pointer" }>;
+
 interface Pending {
 	actionId: string;
-	action: Action;
+	/** Aktion oder Wurf; wird nach Reconnect unverändert erneut gesendet. */
+	msg: Extract<ClientMessage, { actionId: string }>;
 	resolve: (version: number) => void;
 	reject: (err: Error) => void;
 }
@@ -70,6 +74,7 @@ export class SyncConnection {
 	};
 	readonly #WebSocket: typeof WebSocket;
 	readonly #listeners = new Set<() => void>();
+	readonly #pointerListeners = new Set<(p: PointerEvent) => void>();
 	readonly #pending = new Map<string, Pending>();
 	#ws: WebSocket | null = null;
 	#stopped = true;
@@ -97,6 +102,12 @@ export class SyncConnection {
 	subscribe(listener: () => void): () => void {
 		this.#listeners.add(listener);
 		return () => this.#listeners.delete(listener);
+	}
+
+	/** Pings der anderen (und eigene, vom Server zurück); flüchtig, ohne Nachholen. */
+	onPointer(listener: (p: PointerEvent) => void): () => void {
+		this.#pointerListeners.add(listener);
+		return () => this.#pointerListeners.delete(listener);
 	}
 
 	start(): void {
@@ -136,11 +147,31 @@ export class SyncConnection {
 	/** Sendet eine Aktion; löst mit der Raumversion auf, sobald der Server sie bestätigt. */
 	send(action: Action): Promise<number> {
 		const actionId = crypto.randomUUID();
+		return this.#request({ type: "action", actionId, action });
+	}
+
+	/** Würfelt auf dem Server; der Wurf kommt als Objekt `roll` zurück. */
+	roll(formula: string, hidden: boolean): Promise<number> {
+		const actionId = crypto.randomUUID();
+		return this.#request({ type: "roll", actionId, formula, hidden });
+	}
+
+	/** Ping auf einer Szene; ohne Verbindung geht er verloren (er ist flüchtig). */
+	pointer(sceneId: string, x: number, y: number): void {
+		if (this.status === "online") {
+			this.#send({ type: "pointer", sceneId, x, y });
+		}
+	}
+
+	#request(msg: Pending["msg"]): Promise<number> {
 		return new Promise((resolve, reject) => {
-			this.#pending.set(actionId, { actionId, action, resolve, reject });
-			if (this.status === "online") {
-				this.#send({ type: "action", actionId, action });
-			}
+			this.#pending.set(msg.actionId, {
+				actionId: msg.actionId,
+				msg,
+				resolve,
+				reject,
+			});
+			if (this.status === "online") this.#send(msg);
 		});
 	}
 
@@ -215,6 +246,9 @@ export class SyncConnection {
 				return;
 			case "pong":
 				return;
+			case "pointer":
+				for (const l of this.#pointerListeners) l(msg);
+				return;
 		}
 	}
 
@@ -231,7 +265,7 @@ export class SyncConnection {
 		this.#setStatus("online");
 		// Unbestätigte Aktionen in ursprünglicher Reihenfolge erneut senden.
 		for (const p of this.#pending.values()) {
-			this.#send({ type: "action", actionId: p.actionId, action: p.action });
+			this.#send(p.msg);
 		}
 	}
 

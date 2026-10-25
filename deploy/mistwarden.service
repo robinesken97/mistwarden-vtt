@@ -1,0 +1,35 @@
+# systemd-Unit für Mistwarden (Installation durch deploy/install.sh).
+# Konfiguration und Secrets: /etc/mistwarden/mistwarden.env (nur root und Dienstnutzer lesbar).
+[Unit]
+Description=Mistwarden Virtual Tabletop
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mistwarden
+Group=mistwarden
+WorkingDirectory=/opt/mistwarden/current
+EnvironmentFile=/etc/mistwarden/mistwarden.env
+ExecStart=/opt/node/bin/node apps/server/src/index.ts
+Restart=on-failure
+RestartSec=3
+# Kartenverarbeitung (sharp) braucht kurzzeitig viel Speicher; Grenze schützt den LXC.
+MemoryMax=1536M
+
+# Härtung: nur Datenverzeichnis schreibbar, keine neuen Rechte, kein Zugriff auf /home.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/mistwarden
+
+[Install]
+WantedBy=multi-user.target

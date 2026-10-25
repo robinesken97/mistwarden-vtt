@@ -42,6 +42,7 @@ interface AssetRow {
 	tile_size: number;
 	levels: number;
 	purpose: AssetPurpose;
+	original_ext: string;
 	created_at: number;
 }
 
@@ -110,6 +111,14 @@ export class AssetStore {
 			.prepare<[], AssetRow>("SELECT * FROM assets ORDER BY created_at DESC")
 			.all()
 			.map(toMeta);
+	}
+
+	/** Pfad der Originaldatei (für den Raum-Export; wird nie direkt ausgeliefert). */
+	originalPath(id: string): string | undefined {
+		const row = this.#db
+			.prepare<[string], AssetRow>("SELECT * FROM assets WHERE id = ?")
+			.get(id);
+		return row && join(this.#root, id, `original.${row.original_ext}`);
 	}
 
 	/** Pfad einer Kachel (Stufe 0 = volle Auflösung) oder undefined, wenn es sie nicht gibt. */
@@ -204,6 +213,7 @@ export class AssetStore {
 			tile_size: TILE_SIZE,
 			levels,
 			purpose,
+			original_ext: ext,
 			created_at: Date.now(),
 		};
 		this.#db
