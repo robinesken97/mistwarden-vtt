@@ -1,0 +1,16 @@
+# rsync-Filter für ein Release: nur, was der Server zur Laufzeit braucht.
+# Die erste passende Regel gewinnt; Ausschlüsse deshalb zuerst.
+- node_modules/
+- test/
+- *.tsbuildinfo
++ /package.json
++ /package-lock.json
++ /LICENSE
++ /apps/
++ /apps/server/***
++ /apps/client/
++ /apps/client/package.json
++ /apps/client/dist/***
++ /packages/
++ /packages/protocol/***
+- *

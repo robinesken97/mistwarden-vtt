@@ -1,0 +1,24 @@
+# Caddy als Reverse Proxy mit HTTPS im LAN (Kopie nach /etc/caddy/Caddyfile).
+# Domain und Token kommen aus der Umgebung (/etc/caddy/caddy.env), nicht aus dieser Datei.
+#
+# Variante A (empfohlen): echtes Let's-Encrypt-Zertifikat per DNS-Challenge. Der Name
+# (z. B. mistwarden.lan.example.org) zeigt im lokalen DNS auf die feste IP des LXC; von
+# außen muss nichts erreichbar sein. Braucht ein Caddy mit DNS-Modul des eigenen Anbieters,
+# hier Cloudflare (deploy/install.sh lädt es mit CADDY_DNS=cloudflare).
+{$MISTWARDEN_DOMAIN} {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	}
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}
+
+# Variante B: eigene Zertifizierungsstelle von Caddy (ohne Domain). Dann muss auf jedem
+# iPad das Root-Zertifikat installiert und unter Einstellungen → Allgemein → Info →
+# Zertifikatsvertrauenseinstellungen aktiviert werden. Statt Variante A verwenden:
+#
+# {$MISTWARDEN_DOMAIN} {
+# 	tls internal
+# 	encode zstd gzip
+# 	reverse_proxy 127.0.0.1:3000
+# }

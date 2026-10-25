@@ -2,7 +2,7 @@
 
 Ein selbst gehostetes, schlankes Virtual Tabletop für die eigene Runde: Karten, Tokens, Fog und Würfel im Browser, ohne Upload-Limits und ohne Abo. Die Daten bleiben auf dem eigenen Server.
 
-> **Status:** Stufe 1, Schritte 1–8 umgesetzt, noch nicht auf echten iPads getestet. Es fehlt Schritt 9 (Bereitstellung als LXC mit HTTPS im LAN) und die erste Testsession am Tisch.
+> **Status:** Stufe 1 ist umgesetzt, aber noch nicht auf echten iPads und nicht auf dem echten LXC getestet. Es fehlen die Einrichtung auf Proxmox mit HTTPS im LAN (Skripte in `deploy/`) und die erste Testsession am Tisch.
 
 Ziele, Umfang und Architektur stehen in [SPEC.md](SPEC.md).
 
@@ -81,6 +81,45 @@ Weitere Befehle: `npm test`, `npm run typecheck`, `npm run check` (Lint und Form
 | `packages/protocol` | gemeinsame Nachrichtentypen und Schemas für Client und Server |
 | `apps/server` | autoritativer App-Server: HTTP, WebSocket, SQLite |
 | `apps/client` | Browser-Client (TypeScript, Vite, PixiJS mit WebGL) |
+
+## Installation (LXC/Debian)
+
+Die eigene Installation läuft als plain LXC auf Proxmox (Debian 13, feste IP). Alles liegt in [`deploy/`](deploy/). Die Skripte richten keine Firewall ein und öffnen nichts nach außen.
+
+1. **LXC anlegen:** Debian 13, unprivilegiert, 2 Kerne, 2 GB RAM, feste IP. Für Bilder optional einen Bind-Mount auf das NAS einhängen und `ASSET_STORAGE_PATH` darauf zeigen lassen.
+2. **Einrichten (einmalig, als root im LXC):** Repository oder nur den Ordner `deploy/` in den LXC kopieren, dann:
+   ```bash
+   MISTWARDEN_DOMAIN=mistwarden.lan.example.org CADDY_DNS=cloudflare ./deploy/install.sh
+   ```
+   Das installiert Node.js 24 (Prüfsumme geprüft) nach `/opt/node`, legt den Dienstnutzer `mistwarden` an und richtet den systemd-Dienst, die tägliche Datenbanksicherung und Caddy als HTTPS-Proxy ein. Das GM-Passwort wird abgefragt und landet in `/etc/mistwarden/mistwarden.env` (nur für root und den Dienst lesbar); es gibt kein Standardpasswort.
+3. **HTTPS im LAN:** Service Worker und PWA brauchen HTTPS, auch im LAN.
+   - **Variante A, empfohlen:** echtes Zertifikat von Let's Encrypt per DNS-Challenge, ohne dass von außen etwas erreichbar ist. Voraussetzung ist eine eigene Domain bei einem DNS-Anbieter mit API. Beispiel Cloudflare: einen API-Token mit Recht „Zone → DNS → Bearbeiten“ in `/etc/caddy/caddy.env` als `CLOUDFLARE_API_TOKEN` eintragen. Im lokalen DNS (Router, Pi-hole o. ä.) den Namen auf die IP des LXC zeigen lassen. Andere Anbieter: `CADDY_DNS=<modul>` setzen und den `tls`-Block in `/etc/caddy/Caddyfile` anpassen ([Liste der Module](https://github.com/caddy-dns)).
+   - **Variante B, ohne Domain:** `CADDY_DNS` weglassen. Caddy aus dem Debian-Paket erzeugt dann eine eigene Zertifizierungsstelle. Deren Root-Zertifikat (`/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt`) muss auf jedem iPad als Profil installiert und unter *Einstellungen → Allgemein → Info → Zertifikatsvertrauenseinstellungen* aktiviert werden.
+4. **Code aufspielen (vom Entwicklungsrechner):**
+   ```bash
+   deploy/deploy.sh root@<LXC>
+   ```
+   Das Skript prüft und baut lokal (`npm run ci`) und überträgt nur die Laufzeitdateien in ein neues Release unter `/opt/mistwarden/releases/`. Danach sichert es die Datenbank, installiert die Produktions-Abhängigkeiten, schaltet um und startet neu. Schlägt der Healthcheck fehl, geht es automatisch zurück auf das vorige Release. Die letzten drei Releases bleiben liegen. Deployment ist bewusst manuell, nicht per CI.
+5. **Sicherungen:** täglich 04:20 nach `/var/lib/mistwarden/backups/`, die letzten 14 bleiben, zusätzlich je eine vor jedem Deploy (die letzten 5). Bilder liegen in `ASSET_STORAGE_PATH` und werden dort gesichert, z. B. auf dem NAS. Wiederherstellen:
+   ```bash
+   systemctl stop mistwarden
+   cp /var/lib/mistwarden/backups/<datei>.sqlite /var/lib/mistwarden/mistwarden.sqlite
+   rm -f /var/lib/mistwarden/mistwarden.sqlite-wal /var/lib/mistwarden/mistwarden.sqlite-shm
+   chown mistwarden: /var/lib/mistwarden/mistwarden.sqlite && systemctl start mistwarden
+   ```
+   Einzelne Räume lassen sich zusätzlich über „Exportieren“ in der Raumliste sichern.
+
+Nützlich: `journalctl -u mistwarden -f` (Log), `systemctl restart mistwarden`, `curl http://127.0.0.1:3000/healthz`.
+
+### Docker (optional, für andere Installationen)
+
+`Dockerfile` und `compose.example.yaml` bauen ein Image mit Server und Client; Daten liegen im Volume `/data`. HTTPS übernimmt ein Reverse Proxy davor. Das Docker-Setup ist bisher nicht getestet.
+
+```bash
+cp .env.example .env              # GM_PASSWORD eintragen
+cp compose.example.yaml compose.yaml
+docker compose up -d --build
+```
 
 ## Bekannte Einschränkungen
 

@@ -1,0 +1,15 @@
+# Beispiel für Docker Compose (kopieren nach compose.yaml). GM_PASSWORD in .env setzen.
+services:
+  mistwarden:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      DATABASE_PATH: /data/mistwarden.sqlite
+      ASSET_STORAGE_PATH: /data/assets
+    volumes:
+      - ./data:/data
+    ports:
+      # Nur lokal; HTTPS-Proxy (z. B. Caddy) davor.
+      - "127.0.0.1:3000:3000"
