@@ -30,7 +30,8 @@ die() { printf 'Fehler: %s\n' "$*" >&2; exit 1; }
 
 log "Pakete"
 apt-get update -q
-apt-get install -y -q ca-certificates curl xz-utils sqlite3 rsync
+# make: npm ruft für better-sqlite3 immer node-gyp auf; mit mitgeliefertem Prebuild kompiliert es nichts.
+apt-get install -y -q ca-certificates curl xz-utils sqlite3 rsync make
 
 log "Node.js ${NODE_MAJOR}"
 case "$(uname -m)" in
