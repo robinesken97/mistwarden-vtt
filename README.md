@@ -44,13 +44,17 @@ npm start             # Client, API, WebSocket und Bilder auf HOST:PORT
 - Die Spielleitung lädt Token-Bilder hoch (auf 512 px verkleinert) und platziert sie als Token oder als Prop (Möbel, Türen, Deko). Größe in Feldern, Drehung, Besitzer und Ebene stellt sie in der Auswahlleiste ein.
 - Spieler bewegen und drehen nur ihre eigenen Tokens; alles andere prüft der Server. Props bewegt nur die Spielleitung, und nur wenn „Props sperren“ aus ist.
 - Tokens rasten am Grid ein (Quadrate: ungerade Größen in die Feldmitte, gerade auf den Kreuzungspunkt; Hex: Feldmitte). Freies Setzen: Alt-Taste beim Loslassen oder Schalter „Einrasten: aus“.
-- Bedienung: antippen bzw. klicken wählt aus, ziehen verschiebt das eigene Token, sonst die Karte; zwei Finger oder Mausrad zoomen; langes Drücken bzw. Rechtsklick öffnet die Auswahl.
+- Bedienung: antippen bzw. klicken wählt aus, ziehen verschiebt das eigene Token, sonst die Karte; langes Drücken bzw. Rechtsklick öffnet die Auswahl.
+  - iPad: zwei Finger verschieben und zoomen.
+  - Trackpad am Laptop: zwei Finger verschieben nur die Karte, Pinch zoomt. Ziehen mit gedrückter Taste (oder „Mit drei Fingern ziehen“ aus den Bedienungshilfen von macOS) wirkt wie Ziehen mit der Maus.
+  - Maus: das Rad zoomt um den Mauszeiger.
+  - Diese Belegung ist eine eigene Wahl. Trackpad und Mausrad unterscheidet der Browser nicht; Mistwarden erkennt das Mausrad an Zeilenschritten, an den festen Schritten von macOS (Vielfache von 4,0002 px) und an groben ganzen Schritten (z. B. 100 px unter Windows). Alles andere gilt als Trackpad.
 - Tokens einer verdeckten Szene sind für Spieler unsichtbar und werden ihnen nicht übertragen. Einzelne Tokens kann die Spielleitung auch ohne Fog verstecken („Verstecken“); Spieler bekommen sie dann gar nicht erst.
 
 ### Fog
 
 - Fog-Flächen decken ab; zum Aufdecken schaltet die Spielleitung eine Fläche aus (und kann sie wieder einschalten). Freischneiden aus einer Fläche kommt in Stufe 2.
-- Zeichnen mit „Fog: Polygon“ (Ecken antippen, auf den ersten Punkt tippen oder „Fertig“; am Laptop Enter, Escape, Backspace) oder „Fog: Pinsel“ (Größe in Feldern). Beim Zeichnen verschieben und zoomen zwei Finger bzw. das Mausrad.
+- Zeichnen mit „Fog: Polygon“ (Ecken antippen, auf den ersten Punkt tippen oder „Fertig“; am Laptop Enter, Escape, Backspace) oder „Fog: Pinsel“ (Größe in Feldern). Beim Zeichnen verschieben und zoomen zwei Finger, am Laptop Trackpad bzw. Mausrad wie oben.
 - Fog wird ausschließlich als Polygone gespeichert, nie als Pixelmaske.
 - Für Spieler ist der Fog deckender, langsam ziehender Nebel (Shader), für die Spielleitung halbtransparent. Die Animation lässt sich pro Gerät unter „Darstellung“ abschalten.
 
