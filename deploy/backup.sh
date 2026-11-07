@@ -19,9 +19,10 @@ echo "Gesichert: $DIR/$NAME"
 # Dateinamen sind selbst erzeugt (ohne Leerzeichen); ls -t sortiert nach Alter.
 prune() {
 	local pattern="$1" keep="$2" f
+	# ls scheitert, solange es zu einem Muster noch keine Datei gibt; mit pipefail bräche das Skript sonst ab.
 	# Glob soll sich hier entfalten.
 	# shellcheck disable=SC2012,SC2086
-	ls -1t "$DIR"/$pattern 2>/dev/null | tail -n +"$((keep + 1))" | while read -r f; do
+	{ ls -1t "$DIR"/$pattern 2>/dev/null || true; } | tail -n +"$((keep + 1))" | while read -r f; do
 		rm -f -- "$f"
 	done
 }

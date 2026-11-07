@@ -29,7 +29,8 @@ die() { printf 'Fehler: %s\n' "$*" >&2; exit 1; }
 
 log "Pakete"
 apt-get update -q
-apt-get install -y -q ca-certificates curl xz-utils sqlite3 rsync
+# make: npm ruft für better-sqlite3 immer node-gyp auf; mit mitgeliefertem Prebuild kompiliert es nichts.
+apt-get install -y -q ca-certificates curl xz-utils sqlite3 rsync make
 
 log "Node.js ${NODE_MAJOR}"
 case "$(uname -m)" in
@@ -137,7 +138,8 @@ Wants=network-online.target
 User=caddy
 Group=caddy
 EnvironmentFile=/etc/caddy/caddy.env
-ExecStart=/usr/local/bin/caddy run --environ --config /etc/caddy/Caddyfile
+# Ohne --environ: das würde DNS_API_TOKEN ins Journal schreiben.
+ExecStart=/usr/local/bin/caddy run --config /etc/caddy/Caddyfile
 ExecReload=/usr/local/bin/caddy reload --config /etc/caddy/Caddyfile --force
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 NoNewPrivileges=yes
