@@ -161,6 +161,20 @@ Ziel: funktional nah an Owlbear 2.x plus dessen beliebteste Erweiterungen. Grobe
 | Token aus Bild | Bild hochladen, rund oder eckig zuschneiden, Rahmen setzen. |
 | Asset-Bibliothek mit Tags | Karten und Tokens nach Tags filtern, raumübergreifend nutzbar. |
 
+**Oberfläche überarbeiten**
+
+Stufe 1 hat eine funktionale, aber zusammengewachsene Oberfläche. Die Überarbeitung kommt in Stufe 2 vor den neuen Werkzeugen, damit diese gleich im neuen Aufbau entstehen; Grundlage sind die Notizen aus der ersten Session.
+
+| Feature | Akzeptanzkriterium |
+| --- | --- |
+| Gestaltungsgrundlage | Farben, Abstände, Schriftgrößen, Radien und Schatten als CSS-Variablen an einer Stelle; keine verstreuten Einzelwerte mehr in den Views. |
+| Werkzeugleiste | Kompakt, mit Symbolen und Beschriftung bzw. Tooltip; Werkzeuge nach Aufgabe gruppiert (Ansicht, Zeichnen, Fog, Würfel, Menü); kein Umbruch, der Inhalte verdeckt, auf iPad hoch- und querformat sowie am Laptop. |
+| Panels und Dialoge | Einheitliches Verhalten von Menü, Würfel-Log, Handouts, Token-Auswahl und Bestätigungen: gleiche Ränder, Schließen-Knopf an fester Stelle, nie übereinander gestapelt, keine Überlappung mit Hinweisen. |
+| Spieleransicht | Spieler sehen nur, was sie brauchen; GM-Werkzeuge und -Hinweise sind für sie nicht nur ausgegraut, sondern fehlen. |
+| Bedienbarkeit | Tippziele mindestens 44 × 44 pt; Eingabefelder mit mindestens 16 px Schrift (kein Zoom in Safari); sichtbarer Fokus; jedes Steuerelement hat einen sprechenden Namen für Screenreader. |
+| Rückmeldung | Laden, Verbindungsstatus, Fehler und erfolgreiche Aktionen einheitlich und knapp; keine `alert`-/`confirm`-Dialoge des Browsers. |
+| Grenzen | Läuft auf Safari 17 (keine neueren CSS-Features ohne Prüfung); keine UI-Bibliothek ohne Begründung und Lizenzprüfung; keine Begriffe oder Gestaltung, die Owlbear Rodeo nachahmen. |
+
 Die Wetter-Erweiterung (github.com/owlbear-rodeo/weather) und die Dynamic-Fog-Erweiterung (github.com/owlbear-rodeo/dynamic-fog) stehen unter GPL-3.0 und dürfen in Mistwarden (AGPL-3.0) als Vorlage dienen. Übernommene oder portierte Dateien behalten ihren Copyright-Vermerk (Owlbear Rodeo) und GPL-Hinweis, Änderungen werden markiert. Die Shader sind für Owlbears Effects-System geschrieben und müssen für PixiJS portiert werden.
 
 ## Szenenaufbau per Prompt (optional, nach Stufe 2)
