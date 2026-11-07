@@ -154,6 +154,14 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		h("div", { className: "room" }, stageHost, stageMessage, hud, panel),
 	);
 	const roomEl = root.firstElementChild as HTMLElement;
+	// Die HUD bricht auf schmalen Geräten (iPad hochkant) um; Panels sitzen darunter.
+	const hudSize = new ResizeObserver(() =>
+		roomEl.style.setProperty(
+			"--hud-height",
+			`${Math.ceil(hud.getBoundingClientRect().bottom)}px`,
+		),
+	);
+	hudSize.observe(hud);
 
 	const showActionError = (err: unknown) =>
 		error.show(
@@ -864,6 +872,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		if (disposed) return;
 		disposed = true;
 		clearTimeout(gridTimer);
+		hudSize.disconnect();
 		fog.destroy();
 		card.destroy();
 		window.removeEventListener("keydown", historyKeys);

@@ -89,6 +89,7 @@ li .name {
 }
 
 input[type="text"],
+input[type="url"],
 select,
 button {
 	font: inherit;
@@ -100,7 +101,8 @@ button {
 	color: inherit;
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="url"] {
 	flex: 1;
 	min-width: 10rem;
 }
@@ -260,7 +262,7 @@ main.room-mode {
 
 .panel {
 	position: absolute;
-	top: 3.75rem;
+	top: calc(var(--hud-height, 3.25rem) + 0.5rem);
 	right: max(0.5rem, env(safe-area-inset-right));
 	bottom: max(0.5rem, env(safe-area-inset-bottom));
 	width: min(26rem, calc(100vw - 1rem));
@@ -436,7 +438,7 @@ button.swatch {
 
 .log-panel {
 	position: absolute;
-	top: 3.75rem;
+	top: calc(var(--hud-height, 3.25rem) + 0.5rem);
 	left: max(0.5rem, env(safe-area-inset-left));
 	bottom: max(4.5rem, env(safe-area-inset-bottom));
 	display: flex;
@@ -511,7 +513,7 @@ button.swatch {
 
 .roll-toast {
 	position: absolute;
-	top: 3.75rem;
+	top: calc(var(--hud-height, 3.25rem) + 0.5rem);
 	left: 50%;
 	transform: translateX(-50%);
 	max-width: calc(100vw - 2rem);

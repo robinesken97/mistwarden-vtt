@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 # Richtet einen frischen Debian-13-LXC für Mistwarden ein (einmalig, als root im LXC).
 #
-#   MISTWARDEN_DOMAIN=mistwarden.lan.example.org CADDY_DNS=cloudflare ./install.sh
-#   (Token danach als DNS_API_TOKEN in /etc/caddy/caddy.env eintragen)
+#   MISTWARDEN_DOMAIN=meinvtt.duckdns.org CADDY_DNS=duckdns ./install.sh
 #
 # - Node.js 24 von nodejs.org (Prüfsumme geprüft) nach /opt/node
 # - Dienstnutzer „mistwarden“, Daten in /var/lib/mistwarden, Code in /opt/mistwarden
 # - Konfiguration in /etc/mistwarden/mistwarden.env (GM-Passwort wird abgefragt, kein Standard)
 # - systemd-Dienst und tägliches Backup der Datenbank
-# - Caddy als Reverse Proxy mit HTTPS: CADDY_DNS=<modul> lädt Caddy mit DNS-Modul
-#   (Let's Encrypt per DNS-Challenge), ohne CADDY_DNS das Debian-Paket (tls internal)
+# - Caddy als Reverse Proxy mit HTTPS: CADDY_DNS=<Modul> (z. B. duckdns, cloudflare) lädt Caddy
+#   mit DNS-Modul (Let's Encrypt per DNS-Challenge), ohne CADDY_DNS das Debian-Paket (tls internal)
 #
 # Der Code selbst kommt danach per deploy/deploy.sh vom Entwicklungsrechner.
 set -euo pipefail
@@ -26,7 +25,7 @@ die() { printf 'Fehler: %s\n' "$*" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || die "bitte als root ausführen"
 [[ -r /etc/debian_version ]] || die "nur für Debian gedacht"
-: "${MISTWARDEN_DOMAIN:?MISTWARDEN_DOMAIN setzen, z. B. mistwarden.lan.example.org}"
+: "${MISTWARDEN_DOMAIN:?MISTWARDEN_DOMAIN setzen, z. B. meinvtt.duckdns.org}"
 
 log "Pakete"
 apt-get update -q
@@ -176,7 +175,10 @@ if [[ ! -f /etc/caddy/caddy.env ]]; then
 	umask 077
 	{
 		echo "MISTWARDEN_DOMAIN=${MISTWARDEN_DOMAIN}"
-		[[ -n ${CADDY_DNS:-} ]] && printf 'CADDY_DNS=%s\nDNS_API_TOKEN=%s\n' "$CADDY_DNS" "${DNS_API_TOKEN:-}"
+		if [[ -n ${CADDY_DNS:-} ]]; then
+			echo "CADDY_DNS=${CADDY_DNS}"
+			echo "DNS_API_TOKEN=${DNS_API_TOKEN:-}"
+		fi
 	} >/etc/caddy/caddy.env
 	chown root:caddy /etc/caddy/caddy.env
 	chmod 0640 /etc/caddy/caddy.env

@@ -1,6 +1,6 @@
 # Mistwarden – Spezifikation
 
-Stand: 22.10.2026
+Stand: 07.11.2026
 
 ## Ziel und Rahmen
 
@@ -10,6 +10,7 @@ Mistwarden ist ein selbst gehosteter, schlanker Ersatz für Owlbear Rodeo: eine 
 
 - Eigener Betrieb auf dem Proxmox-Server als plain LXC (Debian 13, feste IP). Für andere Nutzer zusätzlich ein optionales Docker-Setup.
 - Auch im lokalen Netz nur über HTTPS (z. B. Reverse Proxy mit eigener Domain und Let's-Encrypt-DNS-Challenge): Service Worker und weitere Browser-APIs funktionieren nur in sicheren Kontexten.
+- Entscheidung vom 07.11.2026: Caddy im LXC als Reverse Proxy, Let's-Encrypt-Zertifikat per DNS-Challenge über eine kostenlose DuckDNS-Subdomain. Der DuckDNS-Name zeigt auf die per DHCP-Reservierung feste LAN-IP des LXC (Ausnahme im DNS-Rebind-Schutz der Fritzbox); von außen ist nichts erreichbar. Später online über Tailscale/WireGuard, dann gilt derselbe Name. Keine `.local`- und keine MyFRITZ-Namen: für `.local` gibt es keine öffentlichen Zertifikate, MyFRITZ hat keine DNS-API und bräuchte offene Ports.
 - Jetzt: Spiel am Tisch im lokalen Netz. Später: Online-Spiel – Architektur muss das von Anfang an tragen, ohne LAN-Annahmen fest einzubauen.
 - Entwicklung mit Claude Code; ein Entwickler, kein Team.
 - Karten kommen aktuell von Patreon-Creators; wo verfügbar, auch als Universal-VTT-Export (.dd2vtt).
@@ -65,9 +66,11 @@ flowchart TB
     DB[("SQLite<br/>Räume, Szenen, Tokens, Würfellog,<br/>Fog-Polygone, Wände")]
     WORKER["Auto-Fog-Worker (Python, Stufe 3)<br/>OpenCV, Jobs aus der Datenbank"]
   end
+  LLM["Sprachmodell (optional, nach Stufe 2)<br/>lokal oder per API"]
   Clients <-- "WebSocket: Aktionen/Versionen · HTTPS: Assets<br/>LAN jetzt, später Tunnel/VPN" --> APP
   APP --> ASSETS
   APP --> DB
+  APP -. "Szenenaufbau per Prompt" .-> LLM
   WORKER --> DB
 ```
 
@@ -104,7 +107,8 @@ Fog und Wände sind von Anfang an Vektordaten (Polygone), nie Pixelmasken. Das i
 
 - Beim Upload erzeugt der Server WebP-Varianten in mehreren Größen (z. B. 1024, 2048, 4096 px Kantenlänge) und bei sehr großen Karten Kacheln.
 - Der Client wählt die Stufe nach seiner abgefragten maximalen Texturgröße und dem Zoom.
-- Speicherort: Bind-Mount auf das NAS, nicht in den Container. Pfad per Konfiguration.
+- Speicherort: Bind-Mount auf das NAS, nicht in den Container. Pfad per Konfiguration. Diese Ablage verwaltet nur der Server (neu kodierte Stufen und Kacheln, IDs als Dateinamen); sie wird nicht von Hand bearbeitet.
+- Kartenarchiv: Die Originale liegen getrennt davon in einer SMB-Freigabe auf dem NAS, im Finder frei in Ordnern sortierbar. Hochgeladen wird aus dieser Freigabe über die Dateiauswahl von Mac und iPad (Dateien-App bindet SMB ein). Ein direkter Import aus dem Archiv gehört zur Asset-Bibliothek (Stufe 2).
 
 **Synchronisation**
 
@@ -159,6 +163,25 @@ Ziel: funktional nah an Owlbear 2.x plus dessen beliebteste Erweiterungen. Grobe
 
 Die Wetter-Erweiterung (github.com/owlbear-rodeo/weather) und die Dynamic-Fog-Erweiterung (github.com/owlbear-rodeo/dynamic-fog) stehen unter GPL-3.0 und dürfen in Mistwarden (AGPL-3.0) als Vorlage dienen. Übernommene oder portierte Dateien behalten ihren Copyright-Vermerk (Owlbear Rodeo) und GPL-Hinweis, Änderungen werden markiert. Die Shader sind für Owlbears Effects-System geschrieben und müssen für PixiJS portiert werden.
 
+## Szenenaufbau per Prompt (optional, nach Stufe 2)
+
+Die GM beschreibt eine Szene in einem Satz, ein Sprachmodell übersetzt das in Mistwarden-Aktionen. Beispiel: „Lade die Karte ‚Taverne am Fluss‘ in eine neue Szene und erstelle drei Tokens: Wirtin, Schmied und Wache.“ Setzt die Asset-Bibliothek aus Stufe 2 voraus, weil Karten und Tokens über Namen und Tags gefunden werden. Ob und wann es gebaut wird, wird nach der ersten echten Session entschieden.
+
+| Feature | Akzeptanzkriterium |
+| --- | --- |
+| Prompt-Eingabe | Nur für die GM sichtbar; ohne konfiguriertes Modell ausgeblendet. |
+| Vorschlag statt direkter Ausführung | Das Modell liefert eine Liste von Aktionen (Szene anlegen oder wählen, Karte setzen, Grid setzen, Tokens mit Name, Bild, Größe, Position, Besitzer und versteckt anlegen, Fog abdecken, Notiz). Die GM sieht die Liste als Vorschau und bestätigt oder verwirft sie. |
+| Ausführung über den normalen Weg | Bestätigte Aktionen laufen durch dieselbe serverseitige Rechteprüfung und Versionierung wie Handeingaben; ein einziges Rückgängig nimmt den ganzen Aufbau zurück. |
+| Asset-Auflösung | Karten und Token-Bilder werden über Namen und Tags der Asset-Bibliothek gefunden. Bei keinem oder mehreren Treffern fragt die Vorschau nach; fehlende Token-Bilder werden als Platzhalter-Token mit Namen angelegt. |
+| Anbieter konfigurierbar | Lokales Modell (z. B. über Ollama) oder Claude per API; Endpoint, Modell und Schlüssel nur über Umgebungsvariablen. Das Modell muss Tool-Use bzw. strukturierte Ausgabe beherrschen. |
+
+**Grenzen**
+
+- Der Server spricht mit dem Modell, nie der Client; Schlüssel gelangen nicht in den Browser.
+- An das Modell gehen nur Prompt, Szenen- und Asset-Metadaten (Namen, Tags, Maße), keine Bilder und keine Spielerdaten. Bei Cloud-Anbietern gilt das auch für Namen aus lizenzierten Kampagnen; in der README dokumentieren.
+- Das Modell kann nichts tun, was die GM nicht auch von Hand könnte; keine Regelautomatik.
+- Neue Abhängigkeiten nur nach Prüfung; der Aufruf per `fetch` gegen die HTTP-API reicht voraussichtlich.
+
 ## Stufe 3 – Auto-Fog-Erkennung
 
 Auto-Fog ist ein Batch-Job pro Karte, kein Echtzeit-Feature: Er läuft einmal nach dem Upload, Laufzeit bis etwa 60 s ist akzeptabel. Er liefert einen Vorschlag aus Fog-Polygonen, den die GM nachkorrigiert – keine perfekte Erkennung als Ziel. Für Karten mit .dd2vtt-Datei entfällt er.
@@ -205,6 +228,8 @@ Nach Stufe 2 deckt Mistwarden alles ab, was die Runde von Owlbear nutzt; Owlbear
 **Offene Punkte**
 
 - Online-Zugang später: Cloudflare Tunnel mit GM-Login und geheimem Raum-Link oder Tailscale/WireGuard auf allen Geräten.
+- Cloudflare Tunnel setzt eine eigene Domain mit DNS bei Cloudflare voraus; mit DuckDNS bleibt Tailscale/WireGuard der Weg nach außen.
+- Welches Sprachmodell für den Szenenaufbau taugt (lokal auf dem Homeserver oder per API).
 - Welche Karten-Creators .dd2vtt-Dateien anbieten.
 - Wie aufwendig die Portierung der Owlbear-Wetter-Shader nach PixiJS ist.
 

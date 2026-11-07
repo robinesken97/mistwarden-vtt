@@ -1,12 +1,10 @@
 # Caddy als Reverse Proxy mit HTTPS im LAN (Kopie nach /etc/caddy/Caddyfile).
-# Domain und Token kommen aus der Umgebung (/etc/caddy/caddy.env), nicht aus dieser Datei.
+# Domain, DNS-Anbieter und Token kommen aus der Umgebung (/etc/caddy/caddy.env), nicht aus dieser Datei.
 #
 # Variante A (empfohlen): echtes Let's-Encrypt-Zertifikat per DNS-Challenge. Der Name
-# (z. B. mistwarden.lan.example.org) zeigt im lokalen DNS auf die feste IP des LXC; von
-# außen muss nichts erreichbar sein. Braucht ein Caddy mit DNS-Modul des eigenen Anbieters
-# (deploy/install.sh lädt es mit CADDY_DNS=<modul>, z. B. cloudflare oder duckdns).
-# Modul und Token kommen aus CADDY_DNS und DNS_API_TOKEN. Das passt für Module, die den
-# Token als einziges Argument nehmen (cloudflare, duckdns); sonst den tls-Block anpassen.
+# (z. B. meinvtt.duckdns.org) zeigt auf die feste LAN-IP des LXC; von außen muss nichts
+# erreichbar sein. Braucht ein Caddy mit DNS-Modul des Anbieters (deploy/install.sh lädt es
+# mit CADDY_DNS=duckdns bzw. cloudflare). Beide Module nehmen den Token als Argument.
 {$MISTWARDEN_DOMAIN} {
 	tls {
 		dns {$CADDY_DNS} {env.DNS_API_TOKEN}
