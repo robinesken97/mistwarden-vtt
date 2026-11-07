@@ -93,11 +93,13 @@ Die eigene Installation läuft als plain LXC auf Proxmox (Debian 13, feste IP). 
 1. **LXC anlegen:** Debian 13, unprivilegiert, 2 Kerne, 2 GB RAM, feste IP. Für Bilder optional einen Bind-Mount auf das NAS einhängen und `ASSET_STORAGE_PATH` darauf zeigen lassen.
 2. **Einrichten (einmalig, als root im LXC):** Repository oder nur den Ordner `deploy/` in den LXC kopieren, dann:
    ```bash
-   MISTWARDEN_DOMAIN=mistwarden.lan.example.org CADDY_DNS=cloudflare ./deploy/install.sh
+   MISTWARDEN_DOMAIN=meinvtt.duckdns.org CADDY_DNS=duckdns DNS_API_TOKEN=<token> ./deploy/install.sh
    ```
    Das installiert Node.js 24 (Prüfsumme geprüft) nach `/opt/node`, legt den Dienstnutzer `mistwarden` an und richtet den systemd-Dienst, die tägliche Datenbanksicherung und Caddy als HTTPS-Proxy ein. Das GM-Passwort wird abgefragt und landet in `/etc/mistwarden/mistwarden.env` (nur für root und den Dienst lesbar); es gibt kein Standardpasswort.
 3. **HTTPS im LAN:** Service Worker und PWA brauchen HTTPS, auch im LAN.
-   - **Variante A, empfohlen:** echtes Zertifikat von Let's Encrypt per DNS-Challenge, ohne dass von außen etwas erreichbar ist. Voraussetzung ist eine eigene Domain bei einem DNS-Anbieter mit API. Beispiel Cloudflare: einen API-Token mit Recht „Zone → DNS → Bearbeiten“ in `/etc/caddy/caddy.env` als `CLOUDFLARE_API_TOKEN` eintragen. Im lokalen DNS (Router, Pi-hole o. ä.) den Namen auf die IP des LXC zeigen lassen. Andere Anbieter: `CADDY_DNS=<modul>` setzen und den `tls`-Block in `/etc/caddy/Caddyfile` anpassen ([Liste der Module](https://github.com/caddy-dns)).
+   - **Variante A, empfohlen:** echtes Zertifikat von Let's Encrypt per DNS-Challenge, ohne dass von außen etwas erreichbar ist. Es braucht einen Namen bei einem DNS-Anbieter mit API; `CADDY_DNS` wählt das passende Caddy-Modul ([Liste](https://github.com/caddy-dns)), `DNS_API_TOKEN` in `/etc/caddy/caddy.env` den Zugang.
+     - **Kostenlos mit DuckDNS:** auf duckdns.org eine Subdomain anlegen (z. B. `meinvtt.duckdns.org`) und als IP die feste LAN-IP des LXC eintragen. `CADDY_DNS=duckdns`, `DNS_API_TOKEN` ist der Token von der DuckDNS-Seite. Einen lokalen DNS-Eintrag braucht es dann nicht. Eine Fritzbox blockiert öffentliche Namen, die auf private IPs zeigen (DNS-Rebind-Schutz): den Namen unter *Heimnetz → Netzwerk → Netzwerkeinstellungen* als Ausnahme eintragen.
+     - **Mit eigener Domain, z. B. bei Cloudflare:** `CADDY_DNS=cloudflare`, `DNS_API_TOKEN` ist ein API-Token mit Recht „Zone → DNS → Bearbeiten“. Im lokalen DNS (Router, Pi-hole o. ä.) den Namen auf die IP des LXC zeigen lassen.
    - **Variante B, ohne Domain:** `CADDY_DNS` weglassen. Caddy aus dem Debian-Paket erzeugt dann eine eigene Zertifizierungsstelle. Deren Root-Zertifikat (`/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt`) muss auf jedem iPad als Profil installiert und unter *Einstellungen → Allgemein → Info → Zertifikatsvertrauenseinstellungen* aktiviert werden.
 4. **Code aufspielen (vom Entwicklungsrechner):**
    ```bash
