@@ -3,11 +3,13 @@
 #
 # Variante A (empfohlen): echtes Let's-Encrypt-Zertifikat per DNS-Challenge. Der Name
 # (z. B. mistwarden.lan.example.org) zeigt im lokalen DNS auf die feste IP des LXC; von
-# außen muss nichts erreichbar sein. Braucht ein Caddy mit DNS-Modul des eigenen Anbieters,
-# hier Cloudflare (deploy/install.sh lädt es mit CADDY_DNS=cloudflare).
+# außen muss nichts erreichbar sein. Braucht ein Caddy mit DNS-Modul des eigenen Anbieters
+# (deploy/install.sh lädt es mit CADDY_DNS=<modul>, z. B. cloudflare oder duckdns).
+# Modul und Token kommen aus CADDY_DNS und DNS_API_TOKEN. Das passt für Module, die den
+# Token als einziges Argument nehmen (cloudflare, duckdns); sonst den tls-Block anpassen.
 {$MISTWARDEN_DOMAIN} {
 	tls {
-		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		dns {$CADDY_DNS} {env.DNS_API_TOKEN}
 	}
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:3000

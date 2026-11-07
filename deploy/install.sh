@@ -2,12 +2,13 @@
 # Richtet einen frischen Debian-13-LXC für Mistwarden ein (einmalig, als root im LXC).
 #
 #   MISTWARDEN_DOMAIN=mistwarden.lan.example.org CADDY_DNS=cloudflare ./install.sh
+#   (Token danach als DNS_API_TOKEN in /etc/caddy/caddy.env eintragen)
 #
 # - Node.js 24 von nodejs.org (Prüfsumme geprüft) nach /opt/node
 # - Dienstnutzer „mistwarden“, Daten in /var/lib/mistwarden, Code in /opt/mistwarden
 # - Konfiguration in /etc/mistwarden/mistwarden.env (GM-Passwort wird abgefragt, kein Standard)
 # - systemd-Dienst und tägliches Backup der Datenbank
-# - Caddy als Reverse Proxy mit HTTPS: CADDY_DNS=cloudflare lädt Caddy mit DNS-Modul
+# - Caddy als Reverse Proxy mit HTTPS: CADDY_DNS=<modul> lädt Caddy mit DNS-Modul
 #   (Let's Encrypt per DNS-Challenge), ohne CADDY_DNS das Debian-Paket (tls internal)
 #
 # Der Code selbst kommt danach per deploy/deploy.sh vom Entwicklungsrechner.
@@ -137,7 +138,8 @@ Wants=network-online.target
 User=caddy
 Group=caddy
 EnvironmentFile=/etc/caddy/caddy.env
-ExecStart=/usr/local/bin/caddy run --environ --config /etc/caddy/Caddyfile
+# Ohne --environ: das würde DNS_API_TOKEN ins Journal schreiben.
+ExecStart=/usr/local/bin/caddy run --config /etc/caddy/Caddyfile
 ExecReload=/usr/local/bin/caddy reload --config /etc/caddy/Caddyfile --force
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 NoNewPrivileges=yes
@@ -173,7 +175,7 @@ if [[ ! -f /etc/caddy/caddy.env ]]; then
 	umask 077
 	{
 		echo "MISTWARDEN_DOMAIN=${MISTWARDEN_DOMAIN}"
-		[[ -n ${CADDY_DNS:-} ]] && echo "CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}"
+		[[ -n ${CADDY_DNS:-} ]] && printf 'CADDY_DNS=%s\nDNS_API_TOKEN=%s\n' "$CADDY_DNS" "${DNS_API_TOKEN:-}"
 	} >/etc/caddy/caddy.env
 	chown root:caddy /etc/caddy/caddy.env
 	chmod 0640 /etc/caddy/caddy.env
