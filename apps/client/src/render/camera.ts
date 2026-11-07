@@ -50,14 +50,54 @@ export class Camera {
 	}
 }
 
-/** Mausrad zoomt um den Mauszeiger (Trackpad-Pinch kommt als Rad mit ctrlKey). */
+/**
+ * Kleinster Schritt eines klassischen Mausrads am Mac in Safari und Chrome:
+ * Zeilen-Delta von macOS (Vielfache von 0,1000061) × 40 Pixel pro Zeile.
+ */
+const MAC_WHEEL_STEP = 4.000244140625;
+/** So lange nach einem Trackpad-Ereignis gelten weitere (Schwung-)Ereignisse als Trackpad. */
+export const TRACKPAD_STICKY_MS = 300;
+
+/**
+ * Trackpad-Scrollen oder Mausrad? Der Browser sagt es nicht direkt, deshalb:
+ * - Pinch kommt als Rad mit ctrlKey und zoomt immer.
+ * - deltaMode Zeile/Seite (Firefox) oder Vielfache von MAC_WHEEL_STEP sind ein Mausrad.
+ * - deltaX ≠ 0 kann nur ein Trackpad (bzw. Shift+Rad, s. o. schon als Rad erkannt).
+ * - Kurz nach einem Trackpad-Ereignis bleibt es Trackpad, auch bei großen Schwung-Deltas.
+ * - Sonst: grobe ganze Schritte (Windows: 100 bzw. 120) sind ein Mausrad, feine ein Trackpad.
+ */
+export function wheelAction(
+	e: Pick<WheelEvent, "deltaX" | "deltaY" | "deltaMode" | "ctrlKey">,
+	msSinceTrackpad: number,
+): "zoom" | "pan" {
+	if (e.ctrlKey || e.deltaMode !== 0) return "zoom";
+	if (e.deltaX % MAC_WHEEL_STEP === 0 && e.deltaY % MAC_WHEEL_STEP === 0) {
+		return "zoom";
+	}
+	if (e.deltaX !== 0 || msSinceTrackpad < TRACKPAD_STICKY_MS) return "pan";
+	return Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50
+		? "zoom"
+		: "pan";
+}
+
+/**
+ * Trackpad: zwei Finger verschieben, Pinch zoomt. Mausrad zoomt.
+ * Gezoomt wird immer um den Mauszeiger.
+ */
 export function attachWheelZoom(
 	el: HTMLElement,
 	camera: Camera,
 	onChange: () => void,
 ): () => void {
+	let lastTrackpad = Number.NEGATIVE_INFINITY;
 	const wheel = (e: WheelEvent) => {
 		e.preventDefault();
+		if (wheelAction(e, e.timeStamp - lastTrackpad) === "pan") {
+			lastTrackpad = e.timeStamp;
+			camera.panBy(-e.deltaX, -e.deltaY);
+			onChange();
+			return;
+		}
 		const unit = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 800 : 1;
 		const factor = Math.exp(-e.deltaY * unit * (e.ctrlKey ? 0.01 : 0.0015));
 		const r = el.getBoundingClientRect();
