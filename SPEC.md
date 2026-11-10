@@ -173,6 +173,9 @@ Stufe 1 hat eine funktionale, aber zusammengewachsene Oberfläche. Die Überarbe
 | Spieleransicht | Spieler sehen nur, was sie brauchen; GM-Werkzeuge und -Hinweise sind für sie nicht nur ausgegraut, sondern fehlen. |
 | Bedienbarkeit | Tippziele mindestens 44 × 44 pt; Eingabefelder mit mindestens 16 px Schrift (kein Zoom in Safari); sichtbarer Fokus; jedes Steuerelement hat einen sprechenden Namen für Screenreader. |
 | Rückmeldung | Laden, Verbindungsstatus, Fehler und erfolgreiche Aktionen einheitlich und knapp; keine `alert`-/`confirm`-Dialoge des Browsers. |
+| Themes | Mindestens Dunkel, OLED-Schwarz und Hell; Auswahl pro Gerät, Standard folgt dem System; ein Theme ist nur ein Satz Werte der Farbvariablen und ändert Karte, Tokens und Fog nicht. |
+| Sprache | Oberfläche auf Deutsch und Englisch; alle Texte in einer Datei pro Sprache, keine festen Texte in den Views; Auswahl pro Gerät, Standard folgt der Gerätesprache; Servermeldungen kommen als Fehlercode, den der Client übersetzt; Inhalte der Nutzer (Namen, Handouts, Notizen) werden nicht übersetzt. |
+| Spielbegriffe | Bei deutscher Oberfläche lassen sich Regelbegriffe (z. B. HP statt TP, AC statt RK, Attribute, Fertigkeiten) pro Gerät auf Englisch umschalten, Standard: Englisch; Begriffe in beiden Sprachen nur aus dem SRD. |
 | Grenzen | Läuft auf Safari 17 (keine neueren CSS-Features ohne Prüfung); keine UI-Bibliothek ohne Begründung und Lizenzprüfung; keine Begriffe oder Gestaltung, die Owlbear Rodeo nachahmen. |
 
 Die Wetter-Erweiterung (github.com/owlbear-rodeo/weather) und die Dynamic-Fog-Erweiterung (github.com/owlbear-rodeo/dynamic-fog) stehen unter GPL-3.0 und dürfen in Mistwarden (AGPL-3.0) als Vorlage dienen. Übernommene oder portierte Dateien behalten ihren Copyright-Vermerk (Owlbear Rodeo) und GPL-Hinweis, Änderungen werden markiert. Die Shader sind für Owlbears Effects-System geschrieben und müssen für PixiJS portiert werden.
