@@ -238,6 +238,15 @@ input[type="color"] {
 	vertical-align: middle;
 }
 
+/* Sichtbarer Fokus für die Tastatur, an jedem Bedienelement gleich. */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
 /* Text läuft nie über den Knopf hinaus: eine Zeile, zu lange Beschriftungen enden mit „…“. */
 button {
 	max-width: 100%;
@@ -577,6 +586,7 @@ main.room-mode {
 .card .card-close > button,
 .menu .menu-head > button {
 	justify-content: flex-end;
+	min-width: 44px;
 	padding: 0 5px 0 0;
 }
 
@@ -722,6 +732,21 @@ main.room-mode {
 
 .panel[hidden] {
 	display: none;
+}
+
+/* Hochformat: das Panel ist ein Blatt von unten über die ganze Breite; die Karte bleibt
+   darüber sichtbar, Werkzeuge und Leisten weichen, solange es offen ist. */
+@media (max-width: 52rem) and (orientation: portrait) {
+	.panel {
+		top: auto;
+		left: max(8px, env(safe-area-inset-left));
+		width: auto;
+		height: min(600px, calc(100% - var(--hud-height, 52px) - 16px));
+	}
+
+	.room.panel-open .dock {
+		display: none;
+	}
 }
 
 h3 {
@@ -1281,7 +1306,15 @@ button.swatch::before {
 	white-space: nowrap;
 }
 
+/* Sieben Würfel im 320-px-Panel: ohne Lücke und 4 px über den Innenabstand hinaus sind die
+   Tippziele 44 px breit; der Rand in Flächenfarbe lässt sie wie getrennte Knöpfe aussehen. */
+.quick-dice {
+	gap: 0;
+	margin: 0 -4px;
+}
+
 .quick-dice button {
+	border: 2px solid var(--surface);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -1915,7 +1948,18 @@ button.icon-button.active {
 }
 
 /* Schmale Geräte (iPad hochkant): in der Kopfzeile nur Symbole; der Text bleibt für Screenreader. */
+/* Knöpfe nur mit Symbol sind in der Kopfzeile 44 × 44 wie im Entwurf. */
+.hud .icon-button:not(:has(span)) {
+	width: 44px;
+	padding: 0;
+}
+
 @media (max-width: 52rem) {
+	.hud .icon-button {
+		width: 44px;
+		padding: 0;
+	}
+
 	.hud-status,
 	.hud .icon-button span {
 		position: absolute;

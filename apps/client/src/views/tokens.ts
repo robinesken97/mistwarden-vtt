@@ -309,6 +309,7 @@ export function createTokenTools(ctx: TokenToolsContext) {
 
 	// --- GM: Tokens anlegen ---
 	const layerSelect = h("select");
+	layerSelect.setAttribute("aria-label", t("token.layerLabel"));
 	layerSelect.append(
 		h("option", { value: "tokens", textContent: t("token.asToken") }),
 		h("option", { value: "props", textContent: t("token.asProp") }),
@@ -320,6 +321,7 @@ export function createTokenTools(ctx: TokenToolsContext) {
 	});
 	const uploadButton = button(t("common.upload"), () => tokenFile.click());
 	const assetSelect = h("select");
+	assetSelect.setAttribute("aria-label", t("token.imageLabel"));
 	const placeButton = button(
 		t("token.place"),
 		() => {

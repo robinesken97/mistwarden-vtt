@@ -514,11 +514,19 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		const room = roomEl.getBoundingClientRect();
 		const toolsBox = tools.getBoundingClientRect();
 		const beside = getComputedStyle(tools).position === "fixed";
+		// Offenes Panel: seitlich (quer) nimmt es rechts Platz, als Blatt (hochkant) unten.
+		const open = roomEl.querySelector<HTMLElement>(".panel:not([hidden])");
+		const panelBox = open?.getBoundingClientRect();
+		const sheet = panelBox !== undefined && panelBox.width > room.width / 2;
+		const dockTop = dock.getBoundingClientRect().top;
 		const bounds = {
 			left: beside ? toolsBox.right - room.left + 8 : 8,
 			top: hud.getBoundingClientRect().bottom - room.top + 8,
-			right: room.width - (panels.isOpen() ? 344 : 8),
-			bottom: dock.getBoundingClientRect().top - room.top - 8,
+			right: (panelBox && !sheet ? panelBox.left : room.right) - room.left - 8,
+			bottom:
+				(sheet ? panelBox.top : dockTop > 0 ? dockTop : room.bottom) -
+				room.top -
+				8,
 		};
 		for (const [el, box] of [
 			[tokens.bar, tokens.selectedBox()],
@@ -721,6 +729,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	});
 	const uploadButton = button(t("common.upload"), () => mapFile.click());
 	const assetSelect = h("select");
+	assetSelect.setAttribute("aria-label", t("map.pickLabel"));
 	const mapStatus = h("p", { className: "hint", hidden: true });
 	let assetList: AssetMeta[] = [];
 
@@ -812,6 +821,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	function stepper(input: HTMLInputElement, delta: number): HTMLElement {
 		const minus = button("−", () => nudge(input, -delta), "secondary");
 		const plus = button("+", () => nudge(input, delta), "secondary");
+		minus.setAttribute("aria-label", t("common.decrease"));
+		plus.setAttribute("aria-label", t("common.increase"));
 		return h("span", { className: "stepper" }, minus, input, plus);
 	}
 	function nudge(input: HTMLInputElement, delta: number): void {
@@ -894,6 +905,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 	// --- GM: Spieler-Link ---
 	const linkInput = h("input", { type: "text", readOnly: true });
+	linkInput.setAttribute("aria-label", t("link.title"));
 	const linkBox = h(
 		"div",
 		{ className: "link-box" },

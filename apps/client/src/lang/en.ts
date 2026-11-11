@@ -266,4 +266,11 @@ export const en: Record<keyof typeof de, string> = {
 	"settings.device": "This device",
 	"link.copied": "Link copied",
 	"status.reconnected": "Connection restored",
+	"common.decrease": "Decrease",
+	"common.increase": "Increase",
+	"map.pickLabel": "Existing map",
+	"token.layerLabel": "Layer for new images",
+	"token.imageLabel": "Token image",
+	"fog.brushSmaller": "Smaller brush",
+	"fog.brushLarger": "Larger brush",
 };

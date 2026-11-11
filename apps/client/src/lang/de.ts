@@ -265,4 +265,11 @@ export const de = {
 	"settings.device": "Dieses Gerät",
 	"link.copied": "Link kopiert",
 	"status.reconnected": "Verbindung wiederhergestellt",
+	"common.decrease": "Verringern",
+	"common.increase": "Erhöhen",
+	"map.pickLabel": "Vorhandene Karte",
+	"token.layerLabel": "Ebene für neue Bilder",
+	"token.imageLabel": "Token-Bild",
+	"fog.brushSmaller": "Pinsel kleiner",
+	"fog.brushLarger": "Pinsel größer",
 } as const;
