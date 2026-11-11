@@ -1170,6 +1170,11 @@ button.icon-button {
 	border-color: transparent;
 }
 
+/* `hidden` muss gegen display: inline-flex gewinnen (z. B. Handouts ohne Inhalt bei Spielern). */
+button.icon-button[hidden] {
+	display: none;
+}
+
 button.icon-button.active {
 	background: var(--accent);
 	color: var(--on-accent);
