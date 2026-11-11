@@ -40,6 +40,7 @@ import { createNoteTools } from "./notes.ts";
 import { brand, startPage } from "./start.ts";
 import { createTableTools } from "./table.ts";
 import { createTokenTools } from "./tokens.ts";
+import { activeTool, createToolGroups, type ToolGroup } from "./toolgroups.ts";
 
 const statusLabel = {
 	connecting: "Verbinde …",
@@ -111,8 +112,25 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		menuButton.classList.toggle("active", !panel.hidden);
 		sceneButton.classList.toggle("active", !scenePanel.hidden);
 		roomEl.classList.toggle("panel-open", panels.isOpen());
+		// Die Leiste zeigt nur eine Gruppe aktiv: mit einem Gruppen-Panel gilt „Wählen“.
+		if (groupPanel() && (table.tool() || fog.tool() !== "select"))
+			fog.setTool("select");
 		table.render();
 	});
+	// Panel der Gruppe „Tokens“ (GM): Bilder hochladen und platzieren.
+	const tokenPanel = h(
+		"aside",
+		{ className: "panel", hidden: true },
+		panelHead(t("group.tokens"), () => panels.close()),
+	);
+	const groupPanel = (): "tokens" | "scene" | "dice" | null =>
+		!tokenPanel.hidden
+			? "tokens"
+			: !scenePanel.hidden
+				? "scene"
+				: !table.logPanel.hidden
+					? "dice"
+					: null;
 	// GM: Der Szenenname in der Kopfzeile öffnet das Szenen-Panel (Liste, Karte, Grid).
 	const scenePanel = h(
 		"aside",
@@ -122,19 +140,23 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const sceneButton = button("", () => panels.toggle(scenePanel), "secondary");
 	sceneButton.classList.add("hud-scene-button");
 	sceneButton.append(sceneText, icon(ICONS.chevron));
-	const menuButton = iconButton(ICONS.menu, t("menu.title"), () =>
-		panels.toggle(panel),
+	const menuButton = iconButton(
+		ICONS.menu,
+		t("menu.title"),
+		() => panels.toggle(panel),
+		false,
 	);
+	// Reihenfolge wie im Entwurf: Menü, Raum, Szene | Status, Verlauf, Handouts, Log.
 	const hud = h(
 		"header",
 		{ className: "hud" },
+		menuButton,
 		title,
-		h("span", {}, statusDot, statusText),
 		isGm ? sceneButton : sceneText,
 		backToActive,
 		h("span", { className: "hud-space" }),
+		h("span", { className: "hud-conn" }, statusDot, statusText),
 		h("span", { className: "hud-slot" }),
-		menuButton,
 	);
 	// Fehler erscheinen als Meldung über der Karte, auch wenn kein Panel offen ist.
 	const error = createToast("error");
@@ -175,6 +197,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 	panels.add(panel);
 	panels.add(scenePanel);
+	panels.add(tokenPanel);
 	root.classList.add("room-mode");
 	root.replaceChildren(
 		h(
@@ -185,6 +208,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			hud,
 			panel,
 			scenePanel,
+			tokenPanel,
 		),
 	);
 	const roomEl = root.firstElementChild as HTMLElement;
@@ -277,6 +301,9 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			tokens.render();
 			stage?.setTokens(tokens.stageTokens());
 		},
+		snapChanged: () => {
+			if (fog.tool() === "rect") stage?.setTool(fog.stageTool());
+		},
 	});
 
 	// --- Fog ---
@@ -291,8 +318,10 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		changed: () => {
 			fog.render();
 			stage?.setFog(fog.stageFog(), isGm);
+			renderTools();
 		},
 		toolTaken: () => table.reset(),
+		snapping: () => tokens.snapping(),
 	});
 
 	// --- Messen, Zeichnen, Pings, Würfel ---
@@ -305,6 +334,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		currentGrid,
 		stage: () => stage,
 		toolTaken: () => fog.reset(),
+		toolChanged: () => renderTools(),
 		selectTool: () => fog.setTool("select"),
 		togglePanel: (panel) => panels.toggle(panel),
 		changed: () => {
@@ -328,23 +358,127 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 	hud
 		.querySelector(".hud-slot")
-		?.replaceWith(undoButton, redoButton, table.logButton, handouts.hudButton);
-	const toolbar = h(
-		"nav",
-		{ className: "toolbar" },
-		fog.toolSwitch,
-		table.toolSwitch,
-		tokens.snapButton,
+		?.replaceWith(
+			undoButton,
+			redoButton,
+			h("span", { className: "hud-divider" }),
+			handouts.hudButton,
+			table.logButton,
+		);
+
+	// --- Werkzeuggruppen: GM sechs, Spieler drei ---
+	/** Ein Werkzeug wird gewählt: ein offenes Gruppen-Panel weicht. */
+	const leavePanel = () => {
+		if (groupPanel()) panels.close();
+	};
+	const sub = (
+		key: string,
+		label: string,
+		iconPaths: string[],
+		pick: () => void,
+	) => ({
+		key,
+		label,
+		icon: iconPaths,
+		pick: () => {
+			leavePanel();
+			pick();
+		},
+	});
+	const groupList: (ToolGroup | null)[] = [
+		{
+			...sub("view", t("group.view"), ICONS.select, () =>
+				fog.setTool("select"),
+			),
+			subtools: [
+				sub("select", t("tool.select"), ICONS.select, () =>
+					fog.setTool("select"),
+				),
+				sub("measure", t("tool.measure"), ICONS.measure, () =>
+					table.setTool("measure"),
+				),
+			],
+			extras: [tokens.snapButton],
+		},
+		{
+			...sub("draw", t("group.draw"), ICONS.draw, () => table.setTool("draw")),
+			subtools: [
+				sub("free", t("tool.free"), ICONS.free, () => table.setShape("free")),
+				sub("line", t("tool.line"), ICONS.line, () => table.setShape("line")),
+				sub("rect", t("tool.rect"), ICONS.rect, () => table.setShape("rect")),
+				sub("ellipse", t("tool.ellipse"), ICONS.ellipse, () =>
+					table.setShape("ellipse"),
+				),
+				sub("erase", t("tool.erase"), ICONS.eraser, () =>
+					table.setTool("erase"),
+				),
+			],
+		},
+		isGm
+			? {
+					...sub("fog", t("group.fog"), ICONS.fog, () => fog.pickGroup()),
+					subtools: [
+						sub("polygon", t("tool.polygon"), ICONS.polygon, () =>
+							fog.setTool("polygon"),
+						),
+						sub("rect", t("tool.rect"), ICONS.rect, () => fog.setTool("rect")),
+						sub("brush", t("tool.brush"), ICONS.brush, () =>
+							fog.setTool("brush"),
+						),
+					],
+					extras: [tokens.snapButton],
+				}
+			: null,
+		isGm
+			? {
+					key: "tokens",
+					label: t("group.tokens"),
+					icon: ICONS.tokens,
+					pick: () => panels.toggle(tokenPanel),
+				}
+			: null,
+		isGm
+			? {
+					key: "scene",
+					label: t("group.scene"),
+					icon: ICONS.scene,
+					pick: () => panels.toggle(scenePanel),
+				}
+			: null,
+		{
+			key: "dice",
+			label: t("group.dice"),
+			icon: ICONS.dice,
+			pick: () => table.logButton.click(),
+		},
+	];
+	const groups = createToolGroups(
+		groupList.filter((g): g is ToolGroup => g !== null),
+		t("toolbar.label"),
 	);
-	toolbar.setAttribute("aria-label", t("toolbar.label"));
+	function renderTools(): void {
+		groups.render(
+			activeTool({
+				panel: groupPanel(),
+				table: table.tool(),
+				shape: table.shape(),
+				fog: fog.tool(),
+			}),
+		);
+	}
 	panels.add(table.logPanel);
+	// Alle Leisten liegen in einem Stapel über der Werkzeugleiste und überdecken sich nie.
 	roomEl.append(
-		toolbar,
-		tokens.bar,
-		fog.drawBar,
-		fog.selectBar,
-		table.drawBar,
-		table.measureBar,
+		h(
+			"div",
+			{ className: "dock" },
+			tokens.bar,
+			fog.selectBar,
+			fog.drawBar,
+			table.drawBar,
+			table.measureBar,
+			h("div", { className: "tools" }, groups.toolbar, groups.subtools),
+		),
 		table.measureLabel,
 		table.logPanel,
 		h("div", { className: "toasts" }, error.el, table.toast),
@@ -740,8 +874,10 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			),
 			table.gmMeasureSection,
 		);
+		// Der Panel-Kopf trägt den Titel schon.
+		tokens.gmSection.querySelector("h2")?.remove();
+		tokenPanel.append(tokens.gmSection);
 		gmPanel.append(
-			tokens.gmSection,
 			fog.gmSection,
 			notes.gmSection,
 			handouts.gmSection,

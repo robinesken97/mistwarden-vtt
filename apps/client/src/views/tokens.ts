@@ -27,6 +27,8 @@ export interface TokenToolsContext {
 	viewCenter(): { x: number; y: number } | null;
 	/** Tokens oder ihre Darstellung haben sich geändert. */
 	changed(): void;
+	/** Einrasten wurde umgeschaltet. */
+	snapChanged(): void;
 }
 
 const SIZES = [0.5, 1, 2, 3, 4];
@@ -199,7 +201,9 @@ export function createTokenTools(ctx: TokenToolsContext) {
 	const snapButton = iconButton(ICONS.check, "Einrasten", () => {
 		snapping = !snapping;
 		snapButton.setAttribute("aria-pressed", String(snapping));
+		ctx.snapChanged();
 	});
+	snapButton.classList.add("toggle");
 	snapButton.setAttribute("aria-pressed", "true");
 	snapButton.title = "Am Laptop: Alt-Taste beim Loslassen setzt frei.";
 
@@ -445,6 +449,7 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		stageTokens,
 		render,
 		snapButton,
+		snapping: () => snapping,
 		bar,
 		gmSection,
 	};

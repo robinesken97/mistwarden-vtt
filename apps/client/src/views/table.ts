@@ -43,6 +43,8 @@ export interface TableToolsContext {
 	} | null;
 	/** Ein Werkzeug von hier wurde gewählt; andere Werkzeuge zurücksetzen. */
 	toolTaken(): void;
+	/** Nach jedem Neuzeichnen: die Werkzeugleiste gleicht sich ab. */
+	toolChanged(): void;
 	/** Zurück zum Auswählen (Werkzeug der Raumansicht). */
 	selectTool(): void;
 	/** Öffnet oder schließt ein Panel; die Raumansicht hält immer nur eines offen. */
@@ -53,12 +55,6 @@ export interface TableToolsContext {
 type ToolName = "measure" | "draw" | "erase";
 type Shape = DrawingData["shape"];
 
-const SHAPES: [Shape, string][] = [
-	["free", "Frei"],
-	["line", "Linie"],
-	["rect", "Rechteck"],
-	["ellipse", "Ellipse"],
-];
 /** Strichbreiten als Anteil der Feldgröße. */
 const WIDTHS: [number, string][] = [
 	[0.04, "Dünn"],
@@ -280,20 +276,8 @@ export function createTableTools(ctx: TableToolsContext) {
 		},
 	};
 
-	// --- HUD: Werkzeuge für alle ---
-	const toolButtons = new Map<ToolName, HTMLButtonElement>();
-	const toolSwitch = h("span", { className: "tool-switch" });
-	for (const [name, key, paths] of [
-		["measure", "tool.measure", ICONS.measure],
-		["draw", "tool.draw", ICONS.draw],
-	] as const) {
-		const b = iconButton(paths, t(key), () =>
-			setTool(tool === name ? null : name),
-		);
-		toolButtons.set(name, b);
-		toolSwitch.append(b);
-	}
-	const logButton = iconButton(ICONS.dice, t("dice.title"), () => {
+	// --- Kopfzeile: Würfel-Log ---
+	const logButton = iconButton(ICONS.log, t("hud.log"), () => {
 		ctx.togglePanel(logPanel);
 		if (!logPanel.hidden) scrollLog();
 	});
@@ -301,20 +285,6 @@ export function createTableTools(ctx: TableToolsContext) {
 	const measureLabel = h("div", { className: "measure-label", hidden: true });
 
 	// --- Zeichenleiste ---
-	const shapeButtons = new Map<Shape, HTMLButtonElement>();
-	const shapeGroup = h("span", { className: "bar-group segmented" });
-	for (const [name, label] of SHAPES) {
-		const b = button(
-			label,
-			() => {
-				shape = name;
-				setTool("draw");
-			},
-			"secondary",
-		);
-		shapeButtons.set(name, b);
-		shapeGroup.append(b);
-	}
 	const widthButtons = new Map<number, HTMLButtonElement>();
 	const widthGroup = h("span", { className: "bar-group segmented" });
 	for (const [factor, label] of WIDTHS) {
@@ -347,35 +317,22 @@ export function createTableTools(ctx: TableToolsContext) {
 		colorGroup.append(b);
 	}
 	colorGroup.hidden = !ctx.isGm;
-	const eraseButton = button(
-		"Radierer",
-		() => setTool(tool === "erase" ? "draw" : "erase"),
-		"secondary",
-	);
+	// Formen und Radierer sind Unterwerkzeuge der Leiste; hier stehen nur die Einstellungen.
 	const drawBar = h(
 		"div",
-		{ className: "selection-bar rows", hidden: true },
-		// Reihe 1: wie gezeichnet wird; Reihe 2: Aktionen. Beide Reihen sind gleich breit.
-		h("div", { className: "bar-row" }, shapeGroup, widthGroup, colorGroup),
-		h(
-			"div",
-			{ className: "bar-row" },
-			eraseButton,
-			button("Meine löschen", () => eraseMany(false), "secondary"),
-			...(ctx.isGm
-				? [button("Alle löschen", () => eraseMany(true), "secondary")]
-				: []),
-			button("Fertig", () => setTool(null), "secondary"),
-		),
+		{ className: "selection-bar", hidden: true },
+		widthGroup,
+		colorGroup,
+		button("Meine löschen", () => eraseMany(false), "secondary"),
+		...(ctx.isGm
+			? [button("Alle löschen", () => eraseMany(true), "secondary")]
+			: []),
 	);
 	const measureBar = h(
 		"div",
 		{ className: "selection-bar", hidden: true },
 		h("span", { className: "hint" }, "Ziehen misst von Feld zu Feld"),
-		button("Fertig", () => setTool(null), "secondary"),
 	);
-
-	// --- Würfel-Log ---
 	const logList = h("ol", { className: "roll-log" });
 	const formulaInput = h("input", {
 		type: "text",
@@ -606,25 +563,15 @@ export function createTableTools(ctx: TableToolsContext) {
 
 	// --- Darstellung ---
 	function render(): void {
-		for (const [name, b] of toolButtons) {
-			b.classList.toggle(
-				"active",
-				name === tool || (name === "draw" && tool === "erase"),
-			);
-		}
 		logButton.classList.toggle("active", !logPanel.hidden);
 		drawBar.hidden = tool !== "draw" && tool !== "erase";
 		measureBar.hidden = tool !== "measure";
-		for (const [name, b] of shapeButtons) {
-			b.classList.toggle("active", tool === "draw" && name === shape);
-		}
 		for (const [factor, b] of widthButtons) {
 			b.classList.toggle("active", factor === widthFactor);
 		}
 		for (const [color, b] of colorButtons) {
 			b.classList.toggle("active", color === gmColor);
 		}
-		eraseButton.classList.toggle("active", tool === "erase");
 		if (tool !== "measure") measureLabel.hidden = true;
 		renderLog();
 
@@ -638,10 +585,18 @@ export function createTableTools(ctx: TableToolsContext) {
 		set(perCell, String(m.perCell));
 		set(unit, m.unit);
 		set(diagonal, m.diagonal);
+		ctx.toolChanged();
 	}
 
 	return {
-		toolSwitch,
+		tool: () => tool,
+		shape: () => shape,
+		setTool,
+		/** Form wählen und zeichnen. */
+		setShape(next: Shape): void {
+			shape = next;
+			setTool("draw");
+		},
 		logButton,
 		drawBar,
 		measureBar,

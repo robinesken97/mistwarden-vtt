@@ -8,10 +8,9 @@ import {
 	type GridData,
 	MAX_FOG_COORDS,
 } from "@mistwarden/protocol";
-import { button, h, iconButton } from "../dom.ts";
+import { button, h } from "../dom.ts";
 import { brushToPolygons, polygonToPolygons } from "../fog/shapes.ts";
 import { t } from "../i18n.ts";
-import { ICONS } from "../icons.ts";
 import type { SyncConnection } from "../net/connection.ts";
 import type { StageFog, StageTool, WorldPoint } from "../render/stage.ts";
 import { confirmDialog, promptDialog } from "../ui.ts";
@@ -34,17 +33,19 @@ export interface FogToolsContext {
 	changed(): void;
 	/** Ein Fog-Werkzeug (oder Auswählen) wurde gewählt; andere Werkzeuge zurücksetzen. */
 	toolTaken(): void;
+	/** Ob Einrasten an ist (gilt für Tokens und das Fog-Rechteck). */
+	snapping(): boolean;
 }
 
-type ToolName = "select" | "polygon" | "brush";
+type ToolName = "select" | "polygon" | "rect" | "brush";
 
 const ANIMATE_KEY = "mistwarden.animateFog";
 const BRUSH_SIZES = [0.25, 0.5, 1, 2, 3];
 
 export function createFogTools(ctx: FogToolsContext) {
 	let tool: ToolName = "select";
-	/** Gerade ist ein Werkzeug außerhalb dieser Leiste aktiv (Messen, Zeichnen). */
-	let away = false;
+	/** Zuletzt benutztes Fog-Werkzeug; die Gruppe „Fog“ öffnet damit. */
+	let lastDraw: ToolName = "polygon";
 	let brushCells = 0.5;
 	let polygonPoints = 0;
 	let selectedId: string | null = null;
@@ -85,6 +86,13 @@ export function createFogTools(ctx: FogToolsContext) {
 		if (tool === "brush") {
 			const grid = ctx.currentGrid();
 			return { type: "brush", radius: ((grid?.size ?? 100) * brushCells) / 2 };
+		}
+		if (tool === "rect") {
+			const grid = ctx.currentGrid();
+			return {
+				type: "rect",
+				grid: ctx.snapping() && grid?.type === "square" ? grid : null,
+			};
 		}
 		return { type: tool };
 	}
@@ -129,8 +137,10 @@ export function createFogTools(ctx: FogToolsContext) {
 	function setTool(next: ToolName): void {
 		ctx.toolTaken();
 		tool = next;
-		away = false;
-		if (next !== "select") selectedId = null;
+		if (next !== "select") {
+			selectedId = null;
+			lastDraw = next;
+		}
 		ctx.stage()?.setTool(stageTool());
 		ctx.changed();
 	}
@@ -148,22 +158,6 @@ export function createFogTools(ctx: FogToolsContext) {
 			void create(brushToPolygons(stroke, radius, Math.max(1, radius / 10)));
 		},
 	};
-
-	// --- HUD: Werkzeuge (nur GM) ---
-	const toolButtons = new Map<ToolName, HTMLButtonElement>();
-	const toolSwitch = h("span", { className: "tool-switch" });
-	for (const [name, key, paths] of [
-		["select", "tool.select", ICONS.select],
-		["polygon", "tool.fogPolygon", ICONS.fog],
-		["brush", "tool.fogBrush", ICONS.fog],
-	] as const) {
-		const b = iconButton(paths, t(key), () => setTool(name));
-		// Die Fog-Werkzeuge stehen in der Leiste auf einer gemeinsamen Fläche.
-		if (name !== "select") b.classList.add("fog-tool");
-		toolButtons.set(name, b);
-		toolSwitch.append(b);
-	}
-	toolSwitch.hidden = !ctx.isGm;
 
 	// --- Zeichenleiste ---
 	const pointsText = h("span");
@@ -189,12 +183,13 @@ export function createFogTools(ctx: FogToolsContext) {
 		brushText,
 		button("+", () => stepBrush(1), "secondary"),
 	);
+	const rectHint = h("span", { className: "hint" }, "Rechteck aufziehen");
 	const drawBar = h(
 		"div",
 		{ className: "selection-bar", hidden: true },
 		polygonGroup,
 		brushGroup,
-		button("Zum Auswählen", () => setTool("select"), "secondary"),
+		rectHint,
 	);
 
 	function stepBrush(dir: number): void {
@@ -309,12 +304,10 @@ export function createFogTools(ctx: FogToolsContext) {
 	window.addEventListener("keydown", keydown);
 
 	function render(): void {
-		for (const [name, b] of toolButtons) {
-			b.classList.toggle("active", name === tool && !away);
-		}
 		drawBar.hidden = tool === "select";
 		polygonGroup.hidden = tool !== "polygon";
 		brushGroup.hidden = tool !== "brush";
+		rectHint.hidden = tool !== "rect";
 		pointsText.textContent =
 			polygonPoints === 0 ? "Ecken antippen" : `${polygonPoints} Punkte`;
 		finishButton.disabled = polygonPoints < 3;
@@ -380,11 +373,12 @@ export function createFogTools(ctx: FogToolsContext) {
 		/** Ein anderes Werkzeug ist jetzt aktiv: eigene Leisten schließen. */
 		reset() {
 			tool = "select";
-			away = true;
 			render();
 		},
 		animate: () => animate,
-		toolSwitch,
+		tool: () => tool,
+		/** Gruppe „Fog“ gewählt: mit dem zuletzt benutzten Werkzeug weiter. */
+		pickGroup: () => setTool(lastDraw),
 		drawBar,
 		selectBar,
 		gmSection,
