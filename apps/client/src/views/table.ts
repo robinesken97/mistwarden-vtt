@@ -302,7 +302,7 @@ export function createTableTools(ctx: TableToolsContext) {
 
 	// --- Zeichenleiste ---
 	const shapeButtons = new Map<Shape, HTMLButtonElement>();
-	const shapeGroup = h("span", { className: "bar-group" });
+	const shapeGroup = h("span", { className: "bar-group segmented" });
 	for (const [name, label] of SHAPES) {
 		const b = button(
 			label,
@@ -316,7 +316,7 @@ export function createTableTools(ctx: TableToolsContext) {
 		shapeGroup.append(b);
 	}
 	const widthButtons = new Map<number, HTMLButtonElement>();
-	const widthGroup = h("span", { className: "bar-group" });
+	const widthGroup = h("span", { className: "bar-group segmented" });
 	for (const [factor, label] of WIDTHS) {
 		const b = button(
 			label,
@@ -341,7 +341,7 @@ export function createTableTools(ctx: TableToolsContext) {
 			"secondary",
 		);
 		b.className = "swatch";
-		b.style.background = color;
+		b.style.setProperty("--swatch", color);
 		b.title = `Farbe ${color}`;
 		colorButtons.set(color, b);
 		colorGroup.append(b);
@@ -354,20 +354,19 @@ export function createTableTools(ctx: TableToolsContext) {
 	);
 	const drawBar = h(
 		"div",
-		{ className: "selection-bar", hidden: true },
-		shapeGroup,
-		widthGroup,
-		colorGroup,
+		{ className: "selection-bar rows", hidden: true },
+		// Reihe 1: wie gezeichnet wird; Reihe 2: Aktionen. Beide Reihen sind gleich breit.
+		h("div", { className: "bar-row" }, shapeGroup, widthGroup, colorGroup),
 		h(
-			"span",
-			{ className: "bar-group" },
+			"div",
+			{ className: "bar-row" },
 			eraseButton,
 			button("Meine löschen", () => eraseMany(false), "secondary"),
 			...(ctx.isGm
 				? [button("Alle löschen", () => eraseMany(true), "secondary")]
 				: []),
+			button("Fertig", () => setTool(null), "secondary"),
 		),
-		button("Fertig", () => setTool(null), "secondary"),
 	);
 	const measureBar = h(
 		"div",
@@ -448,7 +447,7 @@ export function createTableTools(ctx: TableToolsContext) {
 			quick,
 			rollForm,
 			...(ctx.isGm
-				? [h("label", { className: "hint" }, hiddenBox, ` ${t("dice.hidden")}`)]
+				? [h("label", { className: "hint" }, hiddenBox, t("dice.hidden"))]
 				: []),
 			rollError,
 		),

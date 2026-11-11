@@ -242,22 +242,65 @@ button.secondary {
 	font-weight: 400;
 }
 
-/* Häkchen-Zeile: Kästchen und Text auf einer Linie, die ganze Zeile ist das Tippziel. */
-label:has(> input[type="checkbox"]) {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	justify-content: flex-start;
-	gap: 8px;
-	min-height: 44px;
+/* Auswahlfeld: eigener Pfeil mit festem Abstand zum Rand statt des Browser-Pfeils ganz außen. */
+select {
+	appearance: none;
+	-webkit-appearance: none;
+	padding-right: 36px;
+	text-overflow: ellipsis;
+	background-image:
+		linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+		linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+	background-position:
+		calc(100% - 19px) 50%,
+		calc(100% - 14px) 50%;
+	background-size: 5px 5px;
+	background-repeat: no-repeat;
 }
 
-input[type="checkbox"] {
+/* Schalter als Pille statt Kästchen: an = Akzentrahmen und getönte Fläche, aus = grau.
+   Das Kästchen bleibt für Tastatur und Screenreader im Dokument, ist aber unsichtbar. */
+label:has(> input[type="checkbox"]) {
+	position: relative;
+	box-sizing: border-box;
+	display: inline-flex;
 	flex: none;
-	width: 20px;
-	height: 20px;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	align-self: flex-start;
+	justify-self: start;
+	width: fit-content;
+	max-width: 100%;
+	min-height: 44px;
+	padding: 4px 16px;
+	color: var(--muted);
+	font-size: 14px;
+	border: 1px solid var(--line-strong);
+	border-radius: 22px;
+	cursor: pointer;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+label:has(> input[type="checkbox"]:checked) {
+	color: var(--fg);
+	background: var(--accent-soft);
+	border-color: var(--accent);
+}
+
+label:has(> input[type="checkbox"]:focus-visible) {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+label > input[type="checkbox"] {
+	position: absolute;
+	width: 1px;
+	height: 1px;
 	margin: 0;
-	accent-color: var(--accent);
+	opacity: 0;
+	pointer-events: none;
 }
 
 /* Ruhige Knöpfe: gefüllte Fläche ohne Rand; die Startkarte setzt einen Rand dazu. */
@@ -650,22 +693,19 @@ input.num {
 
 /* --- Auswahlleiste für Tokens (unten, gut mit dem Daumen erreichbar) --- */
 
-/* Mittig über left/right/auto statt left: 50 %: sonst steht nur die halbe Breite zur Verfügung
-   und die Leiste bricht um, obwohl Platz wäre. */
+/* Mittig über left/right/auto statt left: 50 %: sonst steht nur die halbe Breite zur Verfügung. */
 .selection-bar {
 	position: absolute;
 	left: 8px;
 	right: 8px;
-	width: fit-content;
-	margin-inline: auto;
 	bottom: calc(var(--bar-bottom) + max(0.75rem, env(safe-area-inset-bottom)));
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: center;
-	gap: 4px 8px;
 	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	width: fit-content;
 	max-width: calc(100% - 16px);
+	margin-inline: auto;
 	padding: 4px;
 	font-size: 14px;
 	background: var(--surface);
@@ -674,37 +714,76 @@ input.num {
 	box-shadow: 0 8px 24px var(--shadow-color);
 }
 
+.selection-bar[hidden] {
+	display: none;
+}
+
+/* Mehrzeilige Leisten: feste Reihen, jede Reihe füllt die Breite, alle Kanten bündig.
+   Die Leiste ist so breit wie ihre breiteste Reihe. */
+.selection-bar.rows {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.bar-row,
+.bar-group {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.bar-row {
+	flex-wrap: wrap;
+}
+
+/* Farbfelder verteilen sich über ihre Gruppe, damit auch eine umgebrochene Reihe bündig endet. */
+.bar-group {
+	justify-content: space-between;
+}
+
+.bar-row > *,
+.bar-group > button {
+	flex: 1 1 auto;
+}
+
 .selection-bar button {
 	min-width: 44px;
+	min-height: 48px;
+}
+
+/* Entweder-oder-Auswahl: Knöpfe in einer gemeinsamen Fläche, der gewählte in Akzentfarbe. */
+.bar-group.segmented {
+	gap: 0;
+	padding: 2px;
+	background: var(--surface-2);
+	border-radius: var(--radius-control);
+}
+
+.bar-group.segmented button {
+	min-height: 44px;
+	padding: 0 8px;
+	background: transparent;
+	border-radius: 8px;
 }
 
 .selection-bar label {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
+	padding-left: 8px;
 	color: var(--muted);
 	font-size: 13px;
 }
 
 .selection-bar label select {
+	flex: 1;
+	min-height: 48px;
 	color: var(--fg);
 }
 
 .selection-bar > .hint,
 .selection-bar .bar-group > span {
 	padding: 0 8px;
-}
-
-.selection-bar[hidden] {
-	display: none;
-}
-
-.bar-group {
-	display: inline-flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: 4px;
-	align-items: center;
 }
 
 /* `hidden` muss gegen display: inline-flex gewinnen. */
@@ -716,6 +795,7 @@ input.num {
 .bar-name {
 	max-width: 12rem;
 	padding: 0 8px;
+	text-align: left;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -800,25 +880,33 @@ input.num {
 
 /* --- Zeichnen, Messen, Würfel --- */
 .selection-bar button.active {
-	background: var(--accent-soft);
-	box-shadow: inset 0 0 0 2px var(--accent);
+	font-weight: 600;
+	background: var(--accent);
+	color: var(--on-accent);
 }
 
-/* Farbfeld: 44 px Tippziel, sichtbar ist ein 28-px-Kreis (der Rest ist mit der Fläche übermalt). */
-button.swatch,
-.selection-bar button.swatch.active {
+/* Farbfeld: 44 px Tippziel, darin ein 24-px-Kreis; das gewählte trägt einen Akzentring. */
+.selection-bar button.swatch {
+	flex: none;
+	display: grid;
+	place-items: center;
 	width: 44px;
-	height: 44px;
 	padding: 0;
+	background: transparent;
 	border: 0;
+}
+
+button.swatch::before {
+	content: "";
+	width: 24px;
+	height: 24px;
 	border-radius: 50%;
-	box-shadow: inset 0 0 0 8px var(--surface);
+	background: var(--swatch);
 }
 
 .selection-bar button.swatch.active {
-	box-shadow:
-		inset 0 0 0 2px var(--accent),
-		inset 0 0 0 8px var(--surface);
+	background: transparent;
+	box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .measure-label {
@@ -998,39 +1086,80 @@ button.swatch,
 	display: none;
 }
 
+/* Karte wie ein Dialog: Kopf mit Titel und ✕, Felder im gleichen Abstand, Fußzeile mit Aktionen. */
 .card {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	width: min(36rem, 100%);
 	max-height: 100%;
-	padding: 4px 16px 16px;
 	background: var(--surface);
 	border: 1px solid var(--line);
 	border-radius: var(--radius-panel);
 	box-shadow: 0 8px 24px var(--shadow-color);
 }
 
+/* ✕ sitzt in der Titelzeile; der Titel (immer das erste Element) lässt rechts Platz dafür. */
 .card-close {
-	display: flex;
-	justify-content: flex-end;
-	margin-right: -12px;
+	position: absolute;
+	top: 4px;
+	right: 4px;
 }
 
 .card-body {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 12px;
+	padding: 0 16px 16px;
 	overflow-y: auto;
 	-webkit-overflow-scrolling: touch;
 }
 
-.card-body h2 {
-	margin: 0;
+.card-body > h2:first-child {
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	min-height: 53px;
+	margin: 0 -16px 4px;
+	padding: 4px 52px 4px 16px;
 	font-size: 16px;
+	overflow-wrap: anywhere;
+	border-bottom: 1px solid var(--line);
 }
 
 .card-body .row {
 	margin: 0;
+}
+
+/* Beschriftung über dem Feld, Feld über die ganze Breite. */
+.card-body label:has(> select) {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	color: var(--muted);
+	font-size: 13px;
+}
+
+.card-body label > select {
+	width: 100%;
+	color: var(--fg);
+}
+
+/* Fußzeile: Aktionen rechts, die wichtigste ganz außen; Löschen steht getrennt links. */
+.card-body .card-actions {
+	justify-content: flex-end;
+	margin: 4px -16px -16px;
+	padding: 8px;
+	border-top: 1px solid var(--line);
+}
+
+.card-actions .danger {
+	margin-right: auto;
+}
+
+/* Einzelner Knopf unter dem Inhalt (z. B. „Bearbeiten“): rechts wie die Fußzeile, nicht über die Breite. */
+.card-body > button {
+	align-self: flex-end;
 }
 
 .card-text {
@@ -1063,7 +1192,7 @@ button.swatch,
 .handout-picks {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0 16px;
+	gap: 8px;
 }
 
 .handout-picks[hidden] {
@@ -1357,7 +1486,7 @@ button.swatch,
 .start-card select {
 	flex: 1;
 	min-width: 0;
-	background: var(--bg);
+	background-color: var(--bg);
 }
 
 .start-card ul {
@@ -1451,6 +1580,17 @@ button.icon-button.active {
 	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+/* Fog-Werkzeuge: eine gemeinsame Fläche, damit sie als Gruppe lesbar sind. */
+.toolbar .fog-tool {
+	background: var(--surface-2);
+	border-radius: 12px 0 0 12px;
+}
+
+.toolbar .fog-tool + .fog-tool {
+	margin-left: -2px;
+	border-radius: 0 12px 12px 0;
 }
 
 /* Schalter in der Leiste (Einrasten): an = Symbol in Akzentfarbe, aus = blass. */
