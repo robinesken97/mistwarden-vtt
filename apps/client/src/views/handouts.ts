@@ -194,7 +194,7 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 			box.value = p.id;
 			return {
 				box,
-				label: h("label", {}, box, ` ${(p.data as PlayerData).name}`),
+				label: h("label", {}, box, (p.data as PlayerData).name),
 			};
 		});
 		const pickList = h(

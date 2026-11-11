@@ -86,7 +86,7 @@ export function createNoteTools(ctx: NoteToolsContext) {
 			h("h2", {}, "Notiz"),
 			title,
 			text,
-			h("label", {}, visible, " Für Spieler sichtbar"),
+			h("label", {}, visible, "Für Spieler sichtbar"),
 			h(
 				"div",
 				{ className: "row" },

@@ -286,7 +286,7 @@ export function createFogTools(ctx: FogToolsContext) {
 		"div",
 		{},
 		h("h2", {}, "Darstellung"),
-		h("label", {}, animateBox, " Nebel animieren (auf diesem Gerät)"),
+		h("label", {}, animateBox, "Nebel animieren"),
 	);
 
 	function setAll(active: boolean): void {

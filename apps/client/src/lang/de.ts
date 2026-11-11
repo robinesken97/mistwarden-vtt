@@ -98,7 +98,7 @@ export const de = {
 	"history.redoHint": "Wiederholen (Strg/⌘+Umschalt+Z)",
 	"dice.placeholder": "z. B. 1d20+5 oder 4d6kh3",
 	"dice.roll": "Würfeln",
-	"dice.hidden": "Verdeckt würfeln (nur du siehst den Wurf)",
+	"dice.hidden": "Verdeckt würfeln",
 	"dice.less": "Einen {die} weniger",
 	"scenes.title": "Szenen",
 	"dice.hiddenBadge": "verdeckt",

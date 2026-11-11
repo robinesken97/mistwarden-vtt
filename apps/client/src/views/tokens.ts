@@ -248,11 +248,15 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		},
 		"secondary",
 	);
-	const gmControls = h(
-		"span",
-		{ className: "bar-group" },
+	const gmFields = h(
+		"div",
+		{ className: "bar-row" },
 		h("label", {}, "Größe ", sizeSelect),
 		h("label", {}, "Besitzer ", ownerSelect),
+	);
+	const gmControls = h(
+		"div",
+		{ className: "bar-row" },
 		layerButton,
 		hideButton,
 		button(
@@ -288,20 +292,26 @@ export function createTokenTools(ctx: TokenToolsContext) {
 			"secondary",
 		),
 	);
+	const closeButton = iconButton(
+		ICONS.close,
+		t("panel.close"),
+		() => select(null),
+		false,
+	);
 	const bar = h(
 		"div",
-		{ className: "selection-bar", hidden: true },
-		barName,
+		{ className: "selection-bar rows", hidden: true },
 		h(
-			"span",
-			{ className: "bar-group" },
+			"div",
+			{ className: "bar-row" },
+			barName,
 			button("⟲ 45°", () => rotate(-45), "secondary"),
 			button("⟲ 15°", () => rotate(-15), "secondary"),
 			button("⟳ 15°", () => rotate(15), "secondary"),
 			button("⟳ 45°", () => rotate(45), "secondary"),
+			closeButton,
 		),
-		isGm ? gmControls : "",
-		button("✕", () => select(null), "secondary"),
+		...(isGm ? [gmFields, gmControls] : []),
 	);
 
 	// --- GM: Tokens anlegen ---
@@ -385,12 +395,7 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		tokenFile,
 		h("div", { className: "row" }, assetSelect, placeButton),
 		status,
-		h(
-			"label",
-			{},
-			propsLock,
-			" Props sperren (gegen versehentliches Verschieben)",
-		),
+		h("label", {}, propsLock, "Props sperren"),
 		h(
 			"p",
 			{ className: "hint" },

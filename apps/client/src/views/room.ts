@@ -396,7 +396,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		"form",
 		{},
 		sceneName,
-		h("label", {}, sceneHidden, " Nur GM"),
+		h("label", {}, sceneHidden, "Nur GM"),
 		h("button", { type: "submit" }, "Anlegen"),
 	);
 	sceneForm.addEventListener("submit", (e) => {
@@ -728,7 +728,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				"div",
 				{ className: "grid-form" },
 				h("label", {}, "Art ", gridType),
-				h("label", {}, gridVisible, " anzeigen"),
+				h("label", {}, gridVisible, "Grid anzeigen"),
 				h("label", {}, "Größe (px) ", stepper(gridSize, 1)),
 				h("label", {}, "Versatz X ", stepper(gridOffsetX, 1)),
 				h("label", {}, "Versatz Y ", stepper(gridOffsetY, 1)),
