@@ -565,9 +565,53 @@ main.room-mode {
 	min-width: 0;
 }
 
-.panel .row > select {
-	flex: 1;
+/* Bündig: Knöpfe einer Reihe teilen sich die ganze Breite, einzelne Knöpfe füllen sie. */
+.panel .row > select,
+.panel .row > button {
+	flex: 1 1 0;
 	min-width: 0;
+}
+
+.panel > div:not(.panel-head) > button,
+.panel > p > button {
+	width: 100%;
+}
+
+/* Schalter im Panel: Zeile über die ganze Breite, Text links, Schalter rechts (statt Pille).
+   In Formularzeilen (z. B. „Nur GM“) bleibt die Pille. */
+.panel :not(form) > label:has(> input[type="checkbox"]) {
+	justify-content: space-between;
+	gap: 12px;
+	width: 100%;
+	padding: 0;
+	color: var(--fg);
+	text-align: left;
+	background: none;
+	border: 0;
+	border-radius: 0;
+}
+
+.panel :not(form) > label:has(> input[type="checkbox"])::after {
+	content: "";
+	flex: none;
+	width: 40px;
+	height: 24px;
+	border-radius: 999px;
+	background: radial-gradient(
+			circle 9px at 12px 50%,
+			var(--fg) 97%,
+			transparent
+		)
+		var(--switch-off);
+}
+
+.panel :not(form) > label:has(> input[type="checkbox"]:checked)::after {
+	background: radial-gradient(
+			circle 9px at 28px 50%,
+			var(--on-accent) 97%,
+			transparent
+		)
+		var(--accent);
 }
 
 .panel > select {
@@ -697,6 +741,18 @@ input.num {
 .grid-form label {
 	min-height: 44px;
 	font-size: 14px;
+}
+
+/* Zweispaltig: Beschriftung links, rechts Bedienelemente in einer gemeinsamen Breite
+   (so breit wie ein Stepper: 44 + 88 + 44 px mit zwei Lücken). */
+.grid-form {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.grid-form label > select,
+.grid-form label > input.num {
+	flex: none;
+	width: 184px;
 }
 
 /* Spieler-Link: das Feld über die ganze Breite, darunter zwei gleich breite Knöpfe. */

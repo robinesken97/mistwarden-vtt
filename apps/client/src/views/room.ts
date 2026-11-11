@@ -59,8 +59,8 @@ const rejectText = {
 
 const gridTypes: [GridData["type"], string][] = [
 	["square", "Quadrate"],
-	["hexPointy", "Hex (Spitze oben)"],
-	["hexFlat", "Hex (flach oben)"],
+	["hexPointy", "Hex spitz"],
+	["hexFlat", "Hex flach"],
 ];
 
 /** Verzögerung, bevor Grid-Änderungen gesendet werden (Vorschau ist sofort sichtbar). */
@@ -717,7 +717,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		accept: "image/png,image/jpeg,image/webp",
 		hidden: true,
 	});
-	const uploadButton = button("Karte hochladen …", () => mapFile.click());
+	const uploadButton = button("Hochladen …", () => mapFile.click());
 	const assetSelect = h("select");
 	const mapStatus = h("p", { className: "hint", hidden: true });
 	let assetList: AssetMeta[] = [];
@@ -789,7 +789,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	assetSelect.addEventListener("change", () => {
 		if (assetSelect.value) setMap(assetSelect.value);
 	});
-	const removeMap = button("Karte entfernen", () => setMap(null), "secondary");
+	const removeMap = button("Entfernen", () => setMap(null), "secondary");
 
 	// --- GM: Grid der angesehenen Szene ---
 	const gridType = h("select");

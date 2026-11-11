@@ -316,7 +316,7 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		accept: "image/png,image/jpeg,image/webp",
 		hidden: true,
 	});
-	const uploadButton = button("Bild hochladen …", () => tokenFile.click());
+	const uploadButton = button("Hochladen …", () => tokenFile.click());
 	const assetSelect = h("select");
 	const placeButton = button(
 		"Platzieren",
