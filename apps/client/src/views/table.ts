@@ -419,7 +419,11 @@ export function createTableTools(ctx: TableToolsContext) {
 	function renderPool(): void {
 		for (const { sides, add, less } of pool) {
 			const count = dieCount(formulaInput.value, sides);
-			add.textContent = count ? `d${sides} ×${count}` : `d${sides}`;
+			// Anzahl in eigener Zeile: „d100 ×12“ passt nicht nebeneinander in den Knopf.
+			add.replaceChildren(
+				`d${sides}`,
+				...(count ? [h("span", { className: "die-count" }, `×${count}`)] : []),
+			);
 			less.disabled = count === 0;
 		}
 	}

@@ -11,8 +11,9 @@ import {
 	tileUrl,
 } from "@mistwarden/protocol";
 import { api, assetMeta, errorText } from "../api.ts";
-import { button, h } from "../dom.ts";
+import { button, h, iconButton } from "../dom.ts";
 import { t } from "../i18n.ts";
+import { ICONS } from "../icons.ts";
 import type { SyncConnection } from "../net/connection.ts";
 import type { StageToken, WorldPoint } from "../render/stage.ts";
 import { confirmDialog, promptDialog } from "../ui.ts";
@@ -195,14 +196,11 @@ export function createTokenTools(ctx: TokenToolsContext) {
 	}
 
 	// --- HUD: Einrasten ---
-	const snapButton = button(
-		"Einrasten: an",
-		() => {
-			snapping = !snapping;
-			snapButton.textContent = `Einrasten: ${snapping ? "an" : "aus"}`;
-		},
-		"secondary",
-	);
+	const snapButton = iconButton(ICONS.check, "Einrasten", () => {
+		snapping = !snapping;
+		snapButton.setAttribute("aria-pressed", String(snapping));
+	});
+	snapButton.setAttribute("aria-pressed", "true");
 	snapButton.title = "Am Laptop: Alt-Taste beim Loslassen setzt frei.";
 
 	// --- Auswahlleiste ---

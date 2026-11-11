@@ -266,7 +266,7 @@ export function createFogTools(ctx: FogToolsContext) {
 		h(
 			"p",
 			{ className: "hint" },
-			"Fog-Flächen decken ab. Aufdecken: Fläche ausschalten. Zeichnen mit „Fog: Polygon“ (Ecken antippen, ersten Punkt zum Schließen) oder „Fog: Pinsel“. Verschieben und Zoomen beim Zeichnen mit zwei Fingern bzw. Mausrad.",
+			"Fog-Flächen decken ab. Aufdecken: Fläche ausschalten. Zeichnen mit „Polygon“ (Ecken antippen, ersten Punkt zum Schließen) oder „Pinsel“. Verschieben und Zoomen beim Zeichnen mit zwei Fingern bzw. Mausrad.",
 		),
 		h(
 			"div",
