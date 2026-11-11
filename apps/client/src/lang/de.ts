@@ -18,4 +18,19 @@ export const de = {
 	"dice.sides_range": "Würfel mit 2 bis {maxSides} Seiten",
 	"dice.too_many_dice": "Höchstens {maxDice} Würfel",
 	"dice.keep_range": "Behalten: 1 bis Anzahl der Würfel",
+	"panel.close": "Schließen",
+	"dialog.cancel": "Abbrechen",
+	"dialog.ok": "OK",
+	"menu.title": "Menü",
+	"toolbar.label": "Werkzeuge",
+	"room.leave": "Raum verlassen",
+	"room.leaveConfirm":
+		"Diesen Raum auf diesem Gerät verlassen? Über den Spieler-Link kannst du wieder beitreten.",
+	"scene.delete": "Löschen",
+	"scene.deleteConfirm": "Szene „{name}“ löschen?",
+	"scene.renamePrompt": "Neuer Name der Szene",
+	"link.regenerate": "Neu erzeugen",
+	"link.regenerateConfirm":
+		"Neuen Spieler-Link erzeugen? Der alte Link funktioniert dann nicht mehr; wer schon drin ist, bleibt drin.",
+	"dice.title": "Würfel",
 } as const;

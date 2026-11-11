@@ -18,4 +18,19 @@ export const en: Record<keyof typeof de, string> = {
 	"dice.sides_range": "Dice with 2 to {maxSides} sides",
 	"dice.too_many_dice": "At most {maxDice} dice",
 	"dice.keep_range": "Keep: 1 up to the number of dice",
+	"panel.close": "Close",
+	"dialog.cancel": "Cancel",
+	"dialog.ok": "OK",
+	"menu.title": "Menu",
+	"toolbar.label": "Tools",
+	"room.leave": "Leave room",
+	"room.leaveConfirm":
+		"Leave this room on this device? You can join again with the player link.",
+	"scene.delete": "Delete",
+	"scene.deleteConfirm": "Delete scene “{name}”?",
+	"scene.renamePrompt": "New scene name",
+	"link.regenerate": "Create new link",
+	"link.regenerateConfirm":
+		"Create a new player link? The old link stops working; players already in the room stay in.",
+	"dice.title": "Dice",
 };
