@@ -13,6 +13,8 @@ import {
 	type SceneData,
 } from "@mistwarden/protocol";
 import { ApiError, api, assetMeta, errorText, playerLink } from "../api.ts";
+import { createDiceLayer } from "../dice/layer.ts";
+import { planRoll } from "../dice/plan.ts";
 import { button, h, icon, iconButton } from "../dom.ts";
 import { type TextKey, t } from "../i18n.ts";
 import { ICONS } from "../icons.ts";
@@ -185,7 +187,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				},
 				"secondary",
 			);
-	const deviceRow = deviceSettings();
+	const deviceRow = deviceSettings(true);
+	const diceLayer = createDiceLayer(() => storage.diceMode());
 	const panel = h(
 		"aside",
 		{ className: "panel", hidden: true },
@@ -209,6 +212,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			"div",
 			{ className: "room" },
 			stageHost,
+			diceLayer.el,
 			stageMessage,
 			hud,
 			panel,
@@ -344,6 +348,10 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		stage: () => stage,
 		toolTaken: () => fog.reset(),
 		toolChanged: () => renderTools(),
+		rolled: (id, roll, color) => {
+			const plan = planRoll(roll.terms, id);
+			if (plan) void diceLayer.play(plan, color);
+		},
 		selectTool: () => fog.setTool("select"),
 		togglePanel: (panel) => panels.toggle(panel),
 		changed: () => {
@@ -1156,6 +1164,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		clearTimeout(gridTimer);
 		hudSize.disconnect();
 		fog.destroy();
+		diceLayer.destroy();
 		card.destroy();
 		window.removeEventListener("keydown", historyKeys);
 		window.removeEventListener("resize", placeMenus);

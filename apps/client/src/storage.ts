@@ -1,6 +1,7 @@
 // Sitzungs-Tokens im Browser, damit ein Neuladen die Anmeldung übersteht.
 // localStorage kann fehlen oder werfen (privater Modus); dann gilt das Token nur bis zum Neuladen.
 
+import { type DiceMode, parseDiceMode } from "./dice/mode.ts";
 import { type Lang, parseLang } from "./i18n.ts";
 import { parseAccent, parseTheme, type Theme } from "./theme.ts";
 
@@ -12,6 +13,7 @@ const LAST_ROOM_KEY = "mistwarden.lastPlayerRoom";
 const THEME_KEY = "mistwarden.theme";
 const ACCENT_KEY = "mistwarden.accent";
 const LANG_KEY = "mistwarden.lang";
+const DICE_KEY = "mistwarden.dice";
 
 function read(key: string): string | null {
 	try {
@@ -41,6 +43,9 @@ export const storage = {
 	/** Gewählte Sprache; null heißt: der Sprache des Geräts folgen. */
 	lang: () => parseLang(read(LANG_KEY)),
 	setLang: (lang: Lang | null) => write(LANG_KEY, lang),
+	/** Würfelanimation auf diesem Gerät: 3D, einfach oder aus. */
+	diceMode: () => parseDiceMode(read(DICE_KEY)),
+	setDiceMode: (mode: DiceMode) => write(DICE_KEY, mode),
 	gmToken: () => read(GM_KEY),
 	setGmToken: (token: string | null) => write(GM_KEY, token),
 	playerToken: (roomId: string) => read(playerKey(roomId)),
