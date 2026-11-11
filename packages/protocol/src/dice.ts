@@ -20,23 +20,34 @@ export type DiceTerm =
 	  }
 	| { type: "const"; sign: 1 | -1; value: number };
 
+/** Fehler als Code; den Text dazu wählt der Client in der Sprache des Geräts. */
+export type DiceError =
+	| "too_long"
+	| "empty"
+	| "too_many_terms"
+	| "unreadable"
+	| "constant_too_large"
+	| "no_dice"
+	| "sides_range"
+	| "too_many_dice"
+	| "keep_range";
+
 export type ParseResult =
 	| { ok: true; terms: DiceTerm[]; formula: string }
-	| { ok: false; error: string };
+	| { ok: false; error: DiceError; part?: string };
 
 const TERM = /^(?:(\d*)d(\d+|%)(?:k([hl])(\d*))?|(\d+))$/;
 
 /** Prüft eine Formel und liefert die Summanden sowie die normierte Schreibweise. */
 export function parseDice(input: string): ParseResult {
 	if (input.length > MAX_FORMULA_LENGTH) {
-		return { ok: false, error: "Formel zu lang" };
+		return { ok: false, error: "too_long" };
 	}
 	const text = input.replace(/\s+/g, "").toLowerCase();
-	if (text === "") return { ok: false, error: "Leere Formel" };
+	if (text === "") return { ok: false, error: "empty" };
 
 	const parts = text.split(/(?=[+-])/);
-	if (parts.length > MAX_TERMS)
-		return { ok: false, error: "Zu viele Summanden" };
+	if (parts.length > MAX_TERMS) return { ok: false, error: "too_many_terms" };
 
 	const terms: DiceTerm[] = [];
 	let dice = 0;
@@ -44,29 +55,30 @@ export function parseDice(input: string): ParseResult {
 		const sign = part.startsWith("-") ? -1 : 1;
 		const body = part.replace(/^[+-]/, "");
 		const m = TERM.exec(body);
-		if (!m) return { ok: false, error: `Unverständlich: ${part}` };
+		if (!m) return { ok: false, error: "unreadable", part };
 		const [, countText, sidesText, keepMode, keepText, constText] = m;
 		if (constText !== undefined) {
 			const value = Number(constText);
-			if (value > MAX_CONSTANT) return { ok: false, error: "Zahl zu groß" };
+			if (value > MAX_CONSTANT)
+				return { ok: false, error: "constant_too_large" };
 			terms.push({ type: "const", sign, value });
 			continue;
 		}
 		const count = countText ? Number(countText) : 1;
 		const sides = sidesText === "%" ? 100 : Number(sidesText);
-		if (count < 1) return { ok: false, error: "Mindestens ein Würfel" };
+		if (count < 1) return { ok: false, error: "no_dice" };
 		if (sides < 2 || sides > MAX_SIDES) {
-			return { ok: false, error: `Würfel mit 2 bis ${MAX_SIDES} Seiten` };
+			return { ok: false, error: "sides_range" };
 		}
 		dice += count;
 		if (dice > MAX_DICE) {
-			return { ok: false, error: `Höchstens ${MAX_DICE} Würfel` };
+			return { ok: false, error: "too_many_dice" };
 		}
 		let keep: { mode: "h" | "l"; n: number } | null = null;
 		if (keepMode === "h" || keepMode === "l") {
 			const n = keepText ? Number(keepText) : 1;
 			if (n < 1 || n > count) {
-				return { ok: false, error: "Behalten: 1 bis Anzahl der Würfel" };
+				return { ok: false, error: "keep_range" };
 			}
 			keep = { mode: keepMode, n };
 		}

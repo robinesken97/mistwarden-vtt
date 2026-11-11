@@ -57,6 +57,16 @@ describe("Würfelformeln parsen", () => {
 	])("lehnt %j ab", (formula) => {
 		expect(parseDice(formula).ok).toBe(false);
 	});
+
+	it("nennt den Grund als Code", () => {
+		expect(parseDice("")).toEqual({ ok: false, error: "empty" });
+		expect(parseDice("1d1")).toEqual({ ok: false, error: "sides_range" });
+		expect(parseDice("1d20+abc")).toEqual({
+			ok: false,
+			error: "unreadable",
+			part: "+abc",
+		});
+	});
 });
 
 describe("Würfeln", () => {

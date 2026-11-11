@@ -1,4 +1,5 @@
 import { h } from "./dom.ts";
+import { detectLang, setLang } from "./i18n.ts";
 import { parseRoute, startRouter } from "./router.ts";
 import { storage } from "./storage.ts";
 import { applyAccent, applyTheme } from "./theme.ts";
@@ -6,6 +7,9 @@ import { homeView } from "./views/home.ts";
 import { joinView } from "./views/join.ts";
 import { roomView } from "./views/room.ts";
 
+const lang = storage.lang() ?? detectLang(navigator.language);
+setLang(lang);
+document.documentElement.lang = lang;
 applyTheme(storage.theme());
 applyAccent(storage.accent());
 
