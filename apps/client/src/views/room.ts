@@ -36,6 +36,7 @@ import { createCard } from "./card.ts";
 import { deviceSettings } from "./device.ts";
 import { createFogTools } from "./fog.ts";
 import { createHandoutTools } from "./handouts.ts";
+import { placeMenu } from "./menu.ts";
 import { createNoteTools } from "./notes.ts";
 import { brand, startPage } from "./start.ts";
 import { createTableTools } from "./table.ts";
@@ -58,8 +59,8 @@ const rejectText = {
 
 const gridTypes: [GridData["type"], string][] = [
 	["square", "Quadrate"],
-	["hexPointy", "Hex (Spitze oben)"],
-	["hexFlat", "Hex (flach oben)"],
+	["hexPointy", "Hex spitz"],
+	["hexFlat", "Hex flach"],
 ];
 
 /** Verzögerung, bevor Grid-Änderungen gesendet werden (Vorschau ist sofort sichtbar). */
@@ -112,6 +113,9 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		menuButton.classList.toggle("active", !panel.hidden);
 		sceneButton.classList.toggle("active", !scenePanel.hidden);
 		roomEl.classList.toggle("panel-open", panels.isOpen());
+		fogListButton.classList.toggle("active", !fogPanel.hidden);
+		handouts.hudButton.classList.toggle("active", !handoutPanel.hidden);
+		placeMenus();
 		// Die Leiste zeigt nur eine Gruppe aktiv: mit einem Gruppen-Panel gilt „Wählen“.
 		if (groupPanel() && (table.tool() || fog.tool() !== "select"))
 			fog.setTool("select");
@@ -122,6 +126,17 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		"aside",
 		{ className: "panel", hidden: true },
 		panelHead(t("group.tokens"), () => panels.close()),
+	);
+	// Eigene Panels statt Abschnitten im Menü (GM): Fog-Flächen und Handouts.
+	const fogPanel = h(
+		"aside",
+		{ className: "panel", hidden: true },
+		panelHead("Fog-Flächen", () => panels.close()),
+	);
+	const handoutPanel = h(
+		"aside",
+		{ className: "panel", hidden: true },
+		panelHead(t("handouts.title"), () => panels.close()),
 	);
 	const groupPanel = (): "tokens" | "scene" | "dice" | null =>
 		!tokenPanel.hidden
@@ -198,6 +213,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	panels.add(panel);
 	panels.add(scenePanel);
 	panels.add(tokenPanel);
+	panels.add(fogPanel);
+	panels.add(handoutPanel);
 	root.classList.add("room-mode");
 	root.replaceChildren(
 		h(
@@ -209,6 +226,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			panel,
 			scenePanel,
 			tokenPanel,
+			fogPanel,
+			handoutPanel,
 		),
 	);
 	const roomEl = root.firstElementChild as HTMLElement;
@@ -300,6 +319,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		changed: () => {
 			tokens.render();
 			stage?.setTokens(tokens.stageTokens());
+			placeMenus();
 		},
 		snapChanged: () => {
 			if (fog.tool() === "rect") stage?.setTool(fog.stageTool());
@@ -319,6 +339,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			fog.render();
 			stage?.setFog(fog.stageFog(), isGm);
 			renderTools();
+			placeMenus();
 		},
 		toolTaken: () => table.reset(),
 		snapping: () => tokens.snapping(),
@@ -354,7 +375,20 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		card,
 		changed: () => stage?.setNotes(notes.stageNotes()),
 	});
-	const handouts = createHandoutTools({ conn, roomId, gmToken, run, card });
+	const handouts = createHandoutTools({
+		conn,
+		roomId,
+		gmToken,
+		run,
+		card,
+		...(isGm ? { openPanel: () => panels.toggle(handoutPanel) } : {}),
+	});
+	const fogListButton = iconButton(ICONS.list, "Flächen", () =>
+		panels.toggle(fogPanel),
+	);
+	const noteButton = iconButton(ICONS.note, "Notiz", () => void notes.create());
+	noteButton.title =
+		"Neue Notiz in der Bildmitte, zunächst nur für dich sichtbar";
 
 	hud
 		.querySelector(".hud-slot")
@@ -398,7 +432,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 					table.setTool("measure"),
 				),
 			],
-			extras: [tokens.snapButton],
+			extras: isGm ? [noteButton, tokens.snapButton] : [tokens.snapButton],
 		},
 		{
 			...sub("draw", t("group.draw"), ICONS.draw, () => table.setTool("draw")),
@@ -426,7 +460,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 							fog.setTool("brush"),
 						),
 					],
-					extras: [tokens.snapButton],
+					extras: [fogListButton, tokens.snapButton],
 				}
 			: null,
 		isGm
@@ -467,18 +501,55 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		);
 	}
 	panels.add(table.logPanel);
-	// Alle Leisten liegen in einem Stapel über der Werkzeugleiste und überdecken sich nie.
+	// Einstellungsleisten liegen in einem Stapel über der Werkzeugleiste.
+	const tools = h(
+		"div",
+		{ className: "tools" },
+		groups.toolbar,
+		groups.subtools,
+	);
+	const dock = h(
+		"div",
+		{ className: "dock" },
+		fog.drawBar,
+		table.drawBar,
+		table.measureBar,
+		tools,
+	);
+
+	/** Menüs stehen neben ihrem Objekt, innerhalb der freien Fläche der Karte. */
+	function placeMenus(): void {
+		if (!stage) return;
+		const room = roomEl.getBoundingClientRect();
+		const toolsBox = tools.getBoundingClientRect();
+		const beside = getComputedStyle(tools).position === "fixed";
+		const bounds = {
+			left: beside ? toolsBox.right - room.left + 8 : 8,
+			top: hud.getBoundingClientRect().bottom - room.top + 8,
+			right: room.width - (panels.isOpen() ? 344 : 8),
+			bottom: dock.getBoundingClientRect().top - room.top - 8,
+		};
+		for (const [el, box] of [
+			[tokens.bar, tokens.selectedBox()],
+			[fog.selectBar, fog.selectedBox()],
+		] as const) {
+			if (el.hidden || !box) continue;
+			const a = stage.worldToScreen(box.left, box.top);
+			const b = stage.worldToScreen(box.right, box.bottom);
+			const pos = placeMenu(
+				{ left: a.x, top: a.y, right: b.x, bottom: b.y },
+				{ width: el.offsetWidth, height: el.offsetHeight },
+				bounds,
+			);
+			el.style.left = `${pos.left}px`;
+			el.style.top = `${pos.top}px`;
+		}
+	}
+	window.addEventListener("resize", placeMenus);
 	roomEl.append(
-		h(
-			"div",
-			{ className: "dock" },
-			tokens.bar,
-			fog.selectBar,
-			fog.drawBar,
-			table.drawBar,
-			table.measureBar,
-			h("div", { className: "tools" }, groups.toolbar, groups.subtools),
-		),
+		tokens.bar,
+		fog.selectBar,
+		dock,
 		table.measureLabel,
 		table.logPanel,
 		h("div", { className: "toasts" }, error.el, table.toast),
@@ -497,6 +568,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		drop: tokens.drop,
 		select: selectTarget,
 		context: selectTarget,
+		viewChanged: () => placeMenus(),
 		...fog.callbacks,
 		...table.callbacks,
 		moveNote: notes.moveNote,
@@ -645,7 +717,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		accept: "image/png,image/jpeg,image/webp",
 		hidden: true,
 	});
-	const uploadButton = button("Karte hochladen …", () => mapFile.click());
+	const uploadButton = button("Hochladen …", () => mapFile.click());
 	const assetSelect = h("select");
 	const mapStatus = h("p", { className: "hint", hidden: true });
 	let assetList: AssetMeta[] = [];
@@ -717,7 +789,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	assetSelect.addEventListener("change", () => {
 		if (assetSelect.value) setMap(assetSelect.value);
 	});
-	const removeMap = button("Karte entfernen", () => setMap(null), "secondary");
+	const removeMap = button("Entfernen", () => setMap(null), "secondary");
 
 	// --- GM: Grid der angesehenen Szene ---
 	const gridType = h("select");
@@ -877,10 +949,11 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		// Der Panel-Kopf trägt den Titel schon.
 		tokens.gmSection.querySelector("h2")?.remove();
 		tokenPanel.append(tokens.gmSection);
+		fog.gmSection.querySelector("h2")?.remove();
+		fogPanel.append(fog.gmSection);
+		handouts.gmSection.querySelector("h2")?.remove();
+		handoutPanel.append(handouts.gmSection);
 		gmPanel.append(
-			fog.gmSection,
-			notes.gmSection,
-			handouts.gmSection,
 			h("h2", {}, "Spieler-Link"),
 			linkBox,
 			h(
@@ -1070,6 +1143,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		fog.destroy();
 		card.destroy();
 		window.removeEventListener("keydown", historyKeys);
+		window.removeEventListener("resize", placeMenus);
 		conn.stop();
 		stage?.destroy();
 		stage = null;

@@ -64,8 +64,8 @@ const WIDTHS: [number, string][] = [
 /** Farben, aus denen die GM wählt; Spieler zeichnen immer in ihrer eigenen Farbe. */
 const GM_PALETTE = [GM_COLOR, "#e04848", "#3fa7e0", "#5cc85c", "#f0f0f0"];
 const DIAGONALS: [MeasureData["diagonal"], string][] = [
-	["equal", "Jede Diagonale 1 Feld"],
-	["alternating", "Abwechselnd 1-2-1"],
+	["equal", "Immer 1 Feld"],
+	["alternating", "Wechsel 1-2-1"],
 	["euclidean", "Luftlinie"],
 ];
 const QUICK_DICE = [4, 6, 8, 10, 12, 20, 100];

@@ -154,22 +154,10 @@ export function createNoteTools(ctx: NoteToolsContext) {
 		});
 	}
 
-	const gmSection = h(
-		"div",
-		{},
-		h("h2", {}, "Notizen"),
-		h(
-			"p",
-			{ className: "hint" },
-			"Neue Notizen liegen in der Bildmitte und sind zunächst nur für dich sichtbar. Antippen öffnet, Ziehen verschiebt.",
-		),
-		button("Notiz setzen", () => void create()),
-	);
-
 	function render(): void {
 		// Gelöschte oder verborgene Notiz: Karte schließen.
 		if (selectedId && !byId(selectedId)) select(null);
 	}
 
-	return { stageNotes, select, moveNote, gmSection, render };
+	return { stageNotes, select, moveNote, create, render };
 }

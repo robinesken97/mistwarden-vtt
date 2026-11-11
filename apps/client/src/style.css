@@ -21,6 +21,7 @@
 	--ok: #2e7d4f;
 	--warn: #b5651d;
 	--bad: #b3261e;
+	--switch-off: #b9b3a8;
 	/* In jedem Theme gleich: die Szene soll für alle gleich aussehen. */
 	--map-bg: #2a2830;
 	--on-map: #fff;
@@ -45,6 +46,8 @@
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme]) {
 		--bg: #1b1a1d;
+		--bad: #f2a09a;
+		--switch-off: #4a4850;
 		--fg: #ecebe8;
 		--muted: #a29d96;
 		--line: #3a383d;
@@ -67,6 +70,8 @@
 :root[data-theme="dark"] {
 	color-scheme: dark;
 	--bg: #1b1a1d;
+	--bad: #f2a09a;
+	--switch-off: #4a4850;
 	--fg: #ecebe8;
 	--muted: #a29d96;
 	--line: #3a383d;
@@ -88,6 +93,8 @@
 :root[data-theme="oled"] {
 	color-scheme: dark;
 	--bg: #000;
+	--bad: #f2a09a;
+	--switch-off: #4a4850;
 	--fg: #ecebe8;
 	--muted: #a8a39b;
 	--line: #2c2b30;
@@ -246,8 +253,8 @@ button.secondary {
 select {
 	appearance: none;
 	-webkit-appearance: none;
-	/* Text mittig: links so viel Abstand wie rechts für den Pfeil. */
-	padding: 0 36px;
+	/* Text mittig zwischen linker Kante und Pfeil (nicht im ganzen Feld). */
+	padding: 0 36px 0 12px;
 	text-align: center;
 	text-align-last: center;
 	text-overflow: ellipsis;
@@ -558,9 +565,53 @@ main.room-mode {
 	min-width: 0;
 }
 
-.panel .row > select {
-	flex: 1;
+/* Bündig: Knöpfe einer Reihe teilen sich die ganze Breite, einzelne Knöpfe füllen sie. */
+.panel .row > select,
+.panel .row > button {
+	flex: 1 1 0;
 	min-width: 0;
+}
+
+.panel > div:not(.panel-head) > button,
+.panel > p > button {
+	width: 100%;
+}
+
+/* Schalter im Panel: Zeile über die ganze Breite, Text links, Schalter rechts (statt Pille).
+   In Formularzeilen (z. B. „Nur GM“) bleibt die Pille. */
+.panel :not(form) > label:has(> input[type="checkbox"]) {
+	justify-content: space-between;
+	gap: 12px;
+	width: 100%;
+	padding: 0;
+	color: var(--fg);
+	text-align: left;
+	background: none;
+	border: 0;
+	border-radius: 0;
+}
+
+.panel :not(form) > label:has(> input[type="checkbox"])::after {
+	content: "";
+	flex: none;
+	width: 40px;
+	height: 24px;
+	border-radius: 999px;
+	background: radial-gradient(
+			circle 9px at 12px 50%,
+			var(--fg) 97%,
+			transparent
+		)
+		var(--switch-off);
+}
+
+.panel :not(form) > label:has(> input[type="checkbox"]:checked)::after {
+	background: radial-gradient(
+			circle 9px at 28px 50%,
+			var(--on-accent) 97%,
+			transparent
+		)
+		var(--accent);
 }
 
 .panel > select {
@@ -690,6 +741,18 @@ input.num {
 .grid-form label {
 	min-height: 44px;
 	font-size: 14px;
+}
+
+/* Zweispaltig: Beschriftung links, rechts Bedienelemente in einer gemeinsamen Breite
+   (so breit wie ein Stepper: 44 + 88 + 44 px mit zwei Lücken). */
+.grid-form {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.grid-form label > select,
+.grid-form label > input.num {
+	flex: none;
+	width: 184px;
 }
 
 /* Spieler-Link: das Feld über die ganze Breite, darunter zwei gleich breite Knöpfe. */
@@ -924,6 +987,131 @@ input.num {
 		height: 1px;
 		margin: 4px 0;
 	}
+}
+
+/* --- Menü an einem Objekt (Token, Fog-Fläche): Zeilen 44 px, Beschriftung links, Wert rechts --- */
+
+.menu {
+	position: absolute;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	width: 232px;
+	padding: 4px;
+	font-size: 14px;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-panel);
+	box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+.menu[hidden] {
+	display: none;
+}
+
+.menu-row {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	min-height: 44px;
+	padding: 0 0 0 12px;
+}
+
+.menu-row > span,
+.menu-row > strong {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--muted);
+}
+
+.menu-row > strong {
+	padding: 0;
+	color: var(--fg);
+}
+
+.menu .menu-row > button {
+	flex: none;
+	width: 44px;
+	padding: 0;
+	background: var(--surface-2);
+}
+
+.menu .menu-head > button {
+	background: transparent;
+}
+
+/* Auswahlfeld in der Zeile: ohne Rahmen, Wert rechtsbündig vor dem Pfeil. */
+.menu .menu-row > select {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 140px;
+	padding: 0 32px 0 8px;
+	text-align: right;
+	text-align-last: right;
+	background-color: transparent;
+	border-color: transparent;
+}
+
+.menu .menu-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: 0 12px;
+	font-weight: 400;
+	text-align: left;
+	color: inherit;
+	background: transparent;
+	border-color: transparent;
+}
+
+.menu .menu-item.danger {
+	color: var(--bad);
+}
+
+@media (hover: hover) {
+	.menu .menu-item:hover {
+		background: var(--surface-2);
+	}
+}
+
+.menu-divider {
+	height: 1px;
+	background: var(--line);
+}
+
+/* Schalter 40 × 24: an = Akzent mit Knopf rechts, aus = grau mit Knopf links. */
+.switch {
+	flex: none;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	width: 40px;
+	height: 24px;
+	padding: 0 3px;
+	background: var(--switch-off);
+	border-radius: 999px;
+}
+
+.switch::before {
+	content: "";
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: var(--fg);
+}
+
+[aria-checked="true"] > .switch {
+	justify-content: flex-end;
+	background: var(--accent);
+}
+
+[aria-checked="true"] > .switch::before {
+	background: var(--on-accent);
 }
 
 /* --- Zeichnen, Messen, Würfel --- */

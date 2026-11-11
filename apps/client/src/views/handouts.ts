@@ -23,6 +23,8 @@ export interface HandoutToolsContext {
 	gmToken: string | null;
 	run(action: Action): Promise<number | undefined>;
 	card: Card;
+	/** GM: öffnet das Handout-Panel statt der Kartenliste. */
+	openPanel?(): void;
 }
 
 /** Höchstens so viele Kacheln lädt die Bildansicht (2 × 2 = bis 2048 px Kante). */
@@ -311,8 +313,9 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 		gmList,
 		button("Neues Handout", () => edit(null)),
 	);
+	// GM: eigenes Panel mit Liste und „Neues Handout“; Spieler: Karte mit ihren Handouts.
 	const hudButton = iconButton(ICONS.handout, t("handouts.title"), () =>
-		list(),
+		ctx.openPanel ? ctx.openPanel() : list(),
 	);
 
 	function render(): void {

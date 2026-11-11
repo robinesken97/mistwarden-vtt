@@ -14,6 +14,7 @@ import { t } from "../i18n.ts";
 import type { SyncConnection } from "../net/connection.ts";
 import type { StageFog, StageTool, WorldPoint } from "../render/stage.ts";
 import { confirmDialog, promptDialog } from "../ui.ts";
+import { menu, menuDivider, menuItem, menuSwitch } from "./menu.ts";
 
 export interface FogToolsContext {
 	conn: SyncConnection;
@@ -201,58 +202,47 @@ export function createFogTools(ctx: FogToolsContext) {
 		render();
 	}
 
-	// --- Auswahlleiste für eine Fog-Form ---
+	// --- Menü an der gewählten Fog-Fläche ---
 	const fogName = h("strong", { className: "bar-name" });
-	const toggleButton = button("", () => {
+	const activeSwitch = menuSwitch("Deckt ab", () => {
 		const e = byId(selectedId);
 		if (e) setActive(e.id, !(e.data as FogData).active);
 	});
-	const selectBar = h(
-		"div",
-		{ className: "selection-bar", hidden: true },
-		fogName,
-		h(
-			"span",
-			{ className: "bar-group" },
-			toggleButton,
-			button(
-				"Umbenennen",
-				async () => {
-					const e = byId(selectedId);
-					if (!e) return;
-					const name = await promptDialog(
-						t("fog.namePrompt"),
-						(e.data as FogData).name,
-					);
-					if (name !== null) {
-						ctx.run({
-							op: "update",
-							kind: "fog",
-							id: e.id,
-							patch: { name: name.trim().slice(0, 40) },
-						});
-					}
-				},
-				"secondary",
-			),
-			button(
-				"Löschen",
-				async () => {
-					const e = byId(selectedId);
-					if (
-						!e ||
-						!(await confirmDialog(t("fog.deleteConfirm"), t("common.delete")))
-					)
-						return;
-					selectedId = null;
-					ctx.run({ op: "delete", kind: "fog", id: e.id });
-					ctx.changed();
-				},
-				"secondary",
-			),
+	const selectBar = menu(fogName, () => select(null), [
+		activeSwitch.el,
+		menuDivider(),
+		menuItem("Umbenennen", async () => {
+			const e = byId(selectedId);
+			if (!e) return;
+			const name = await promptDialog(
+				t("fog.namePrompt"),
+				(e.data as FogData).name,
+			);
+			if (name !== null) {
+				ctx.run({
+					op: "update",
+					kind: "fog",
+					id: e.id,
+					patch: { name: name.trim().slice(0, 40) },
+				});
+			}
+		}),
+		menuItem(
+			"Löschen",
+			async () => {
+				const e = byId(selectedId);
+				if (
+					!e ||
+					!(await confirmDialog(t("fog.deleteConfirm"), t("common.delete")))
+				)
+					return;
+				selectedId = null;
+				ctx.run({ op: "delete", kind: "fog", id: e.id });
+				ctx.changed();
+			},
+			true,
 		),
-		button("✕", () => select(null), "secondary"),
-	);
+	]);
 
 	// --- Menü: Liste (GM) und Animation (alle) ---
 	const list = h("ul");
@@ -320,7 +310,7 @@ export function createFogTools(ctx: FogToolsContext) {
 		if (e && selectedId) {
 			const f = e.data as FogData;
 			fogName.textContent = f.name || "Fog-Fläche";
-			toggleButton.textContent = f.active ? "Aufdecken" : "Abdecken";
+			activeSwitch.set(f.active);
 		}
 
 		if (!ctx.isGm) return;
@@ -377,6 +367,22 @@ export function createFogTools(ctx: FogToolsContext) {
 		},
 		animate: () => animate,
 		tool: () => tool,
+		/** Umriss der gewählten Fläche in Weltkoordinaten (für die Lage des Menüs). */
+		selectedBox() {
+			const e = byId(selectedId);
+			if (!e) return null;
+			const points = (e.data as FogData).polygons.flatMap((p) => p.outer);
+			if (points.length === 0) return null;
+			// Ringe sind flach gespeichert: x, y, x, y, …
+			const xs = points.filter((_, i) => i % 2 === 0);
+			const ys = points.filter((_, i) => i % 2 === 1);
+			return {
+				left: Math.min(...xs),
+				top: Math.min(...ys),
+				right: Math.max(...xs),
+				bottom: Math.max(...ys),
+			};
+		},
 		/** Gruppe „Fog“ gewählt: mit dem zuletzt benutzten Werkzeug weiter. */
 		pickGroup: () => setTool(lastDraw),
 		drawBar,
