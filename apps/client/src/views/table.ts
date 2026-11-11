@@ -26,6 +26,7 @@ import type {
 	StageTool,
 	WorldPoint,
 } from "../render/stage.ts";
+import { panelHead } from "../ui.ts";
 
 export interface TableToolsContext {
 	conn: SyncConnection;
@@ -42,6 +43,8 @@ export interface TableToolsContext {
 	toolTaken(): void;
 	/** Zurück zum Auswählen (Werkzeug der Raumansicht). */
 	selectTool(): void;
+	/** Öffnet oder schließt ein Panel; die Raumansicht hält immer nur eines offen. */
+	togglePanel(panel: HTMLElement): void;
 	changed(): void;
 }
 
@@ -293,9 +296,8 @@ export function createTableTools(ctx: TableToolsContext) {
 	const logButton = button(
 		"Würfel",
 		() => {
-			logPanel.hidden = !logPanel.hidden;
+			ctx.togglePanel(logPanel);
 			if (!logPanel.hidden) scrollLog();
-			render();
 		},
 		"secondary",
 	);
@@ -415,20 +417,8 @@ export function createTableTools(ctx: TableToolsContext) {
 	}
 	const logPanel = h(
 		"aside",
-		{ className: "log-panel", hidden: true },
-		h(
-			"div",
-			{ className: "log-head" },
-			h("h2", {}, "Würfel"),
-			button(
-				"Schließen",
-				() => {
-					logPanel.hidden = true;
-					render();
-				},
-				"secondary",
-			),
-		),
+		{ className: "panel log-panel", hidden: true },
+		panelHead(t("dice.title"), () => ctx.togglePanel(logPanel)),
 		logList,
 		quick,
 		rollForm,

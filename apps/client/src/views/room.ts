@@ -31,6 +31,7 @@ import {
 	parseTheme,
 	THEMES,
 } from "../theme.ts";
+import { confirmDialog, createPanels, panelHead, promptDialog } from "../ui.ts";
 import { createCard } from "./card.ts";
 import { createFogTools } from "./fog.ts";
 import { createHandoutTools } from "./handouts.ts";
@@ -107,9 +108,11 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		},
 		"secondary",
 	);
-	const menuButton = button("Menü", () => {
-		panel.hidden = !panel.hidden;
+	const panels = createPanels(() => {
+		menuButton.classList.toggle("active", !panel.hidden);
+		table.render();
 	});
+	const menuButton = button(t("menu.title"), () => panels.toggle(panel));
 	const hud = h(
 		"header",
 		{ className: "hud" },
@@ -129,13 +132,9 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const leave = isGm
 		? button("Zur Raumliste", () => navigate("/"), "secondary")
 		: button(
-				"Raum verlassen",
-				() => {
-					if (
-						!confirm(
-							"Diesen Raum auf diesem Gerät verlassen? Über den Spieler-Link kannst du wieder beitreten.",
-						)
-					)
+				t("room.leave"),
+				async () => {
+					if (!(await confirmDialog(t("room.leaveConfirm"), t("room.leave"))))
 						return;
 					storage.setPlayerToken(roomId, null);
 					cleanup();
@@ -197,6 +196,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const panel = h(
 		"aside",
 		{ className: "panel", hidden: true },
+		panelHead(t("menu.title"), () => panels.close()),
 		roleText,
 		h("h2", {}, "Spieler"),
 		players,
@@ -214,6 +214,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		h("p", {}, leave),
 	);
 
+	panels.add(panel);
 	root.classList.add("room-mode");
 	root.replaceChildren(
 		h("div", { className: "room" }, stageHost, stageMessage, hud, panel),
@@ -329,6 +330,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		stage: () => stage,
 		toolTaken: () => fog.reset(),
 		selectTool: () => fog.setTool("select"),
+		togglePanel: (panel) => panels.toggle(panel),
 		changed: () => {
 			table.render();
 			updateStage();
@@ -350,16 +352,18 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 	hud
 		.querySelector(".hud-slot")
-		?.replaceWith(
-			fog.toolSwitch,
-			table.toolSwitch,
-			table.logButton,
-			handouts.hudButton,
-			undoButton,
-			redoButton,
-			tokens.snapButton,
-		);
+		?.replaceWith(undoButton, redoButton, table.logButton, handouts.hudButton);
+	const toolbar = h(
+		"nav",
+		{ className: "toolbar" },
+		fog.toolSwitch,
+		table.toolSwitch,
+		tokens.snapButton,
+	);
+	toolbar.setAttribute("aria-label", t("toolbar.label"));
+	panels.add(table.logPanel);
 	roomEl.append(
+		toolbar,
 		tokens.bar,
 		fog.drawBar,
 		fog.selectBar,
@@ -498,8 +502,13 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			renameButton,
 			button(
 				"Löschen",
-				() => {
-					if (confirm(`Szene „${data.name}“ löschen?`)) {
+				async () => {
+					if (
+						await confirmDialog(
+							t("scene.deleteConfirm", { name: data.name }),
+							t("scene.delete"),
+						)
+					) {
 						run({ op: "delete", kind: "scene", id: scene.id });
 					}
 				},
@@ -508,10 +517,12 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		);
 	}
 
-	function rename(scene: Entity): void {
-		const name = prompt(
-			"Neuer Name der Szene",
-			(scene.data as SceneData).name,
+	async function rename(scene: Entity): Promise<void> {
+		const name = (
+			await promptDialog(
+				t("scene.renamePrompt"),
+				(scene.data as SceneData).name,
+			)
 		)?.trim();
 		if (name)
 			run({ op: "update", kind: "scene", id: scene.id, patch: { name } });
@@ -708,9 +719,10 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			async () => {
 				if (!gmToken) return;
 				if (
-					!confirm(
-						"Neuen Spieler-Link erzeugen? Der alte Link funktioniert dann nicht mehr; wer schon drin ist, bleibt drin.",
-					)
+					!(await confirmDialog(
+						t("link.regenerateConfirm"),
+						t("link.regenerate"),
+					))
 				)
 					return;
 				try {
