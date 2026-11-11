@@ -16,6 +16,7 @@ import {
 	type RollTerm,
 	type SceneData,
 } from "@mistwarden/protocol";
+import { changeDie, dieCount } from "../dice-pool.ts";
 import { button, h, iconButton } from "../dom.ts";
 import { simplifyStroke } from "../draw/shapes.ts";
 import { t } from "../i18n.ts";
@@ -379,7 +380,7 @@ export function createTableTools(ctx: TableToolsContext) {
 	const logList = h("ol", { className: "roll-log" });
 	const formulaInput = h("input", {
 		type: "text",
-		placeholder: "z. B. 1d20+5 oder 4d6kh3",
+		placeholder: t("dice.placeholder"),
 		autocomplete: "off",
 		maxLength: 100,
 	});
@@ -394,7 +395,7 @@ export function createTableTools(ctx: TableToolsContext) {
 		"form",
 		{ className: "roll-form" },
 		formulaInput,
-		h("button", { type: "submit" }, "Würfeln"),
+		h("button", { type: "submit" }, t("dice.roll")),
 	);
 	rollForm.addEventListener("submit", (e) => {
 		e.preventDefault();
@@ -402,14 +403,36 @@ export function createTableTools(ctx: TableToolsContext) {
 		if (!formula) return;
 		void roll(formula).then(() => {
 			if (rollError.hidden) formulaInput.value = "";
+			renderPool();
 		});
 	});
-	const quick = h("div", { className: "quick-dice" });
-	for (const sides of QUICK_DICE) {
-		quick.append(
-			button(`d${sides}`, () => void roll(`1d${sides}`), "secondary"),
-		);
+	// Würfelvorrat: Antippen legt einen Würfel in die Formel, „−“ nimmt einen weg.
+	const pool = QUICK_DICE.map((sides) => {
+		const change = (delta: 1 | -1) => {
+			formulaInput.value = changeDie(formulaInput.value, sides, delta);
+			renderPool();
+		};
+		const less = button("−", () => change(-1), "secondary");
+		less.setAttribute("aria-label", t("dice.less", { die: `d${sides}` }));
+		return { sides, less, add: button("", () => change(1), "secondary") };
+	});
+	function renderPool(): void {
+		for (const { sides, add, less } of pool) {
+			const count = dieCount(formulaInput.value, sides);
+			add.textContent = count ? `d${sides} ×${count}` : `d${sides}`;
+			less.disabled = count === 0;
+		}
 	}
+	formulaInput.addEventListener("input", renderPool);
+	renderPool();
+	const quick = h(
+		"div",
+		{ className: "quick-dice" },
+		...pool.map((p) => p.add),
+		...pool.map((p) => p.less),
+	);
+	// Eine Spalte pro Würfel, damit jedes „−“ unter seinem Würfel steht.
+	quick.style.gridTemplateColumns = `repeat(${pool.length}, minmax(0, 1fr))`;
 	const logPanel = h(
 		"aside",
 		{ className: "panel log-panel", hidden: true },
@@ -418,14 +441,7 @@ export function createTableTools(ctx: TableToolsContext) {
 		quick,
 		rollForm,
 		...(ctx.isGm
-			? [
-					h(
-						"label",
-						{ className: "hint" },
-						hiddenBox,
-						" Verdeckt würfeln (nur du siehst den Wurf)",
-					),
-				]
+			? [h("label", { className: "hint" }, hiddenBox, ` ${t("dice.hidden")}`)]
 			: []),
 		rollError,
 	);

@@ -95,4 +95,8 @@ export const en: Record<keyof typeof de, string> = {
 	"history.redo": "Redo",
 	"history.undoHint": "Undo (Ctrl/⌘+Z)",
 	"history.redoHint": "Redo (Ctrl/⌘+Shift+Z)",
+	"dice.placeholder": "e.g. 1d20+5 or 4d6kh3",
+	"dice.roll": "Roll",
+	"dice.hidden": "Roll hidden (only you see the roll)",
+	"dice.less": "One {die} fewer",
 };

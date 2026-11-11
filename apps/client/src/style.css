@@ -677,9 +677,14 @@ button.swatch {
 }
 
 .quick-dice {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.35rem;
+	display: grid;
+	gap: 0.25rem;
+	font-size: 0.85rem;
+	white-space: nowrap;
+}
+
+.quick-dice > * {
+	padding: 0;
 }
 
 .roll-form {
