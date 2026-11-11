@@ -101,4 +101,6 @@ export const de = {
 	"dice.hidden": "Verdeckt würfeln (nur du siehst den Wurf)",
 	"dice.less": "Einen {die} weniger",
 	"scenes.title": "Szenen",
+	"dice.hiddenBadge": "verdeckt",
+	"status.players": "{count} Spieler",
 } as const;

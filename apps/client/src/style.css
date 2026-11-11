@@ -9,6 +9,7 @@
 	--on-accent: #fff;
 	--surface: #fff;
 	--surface-2: #ebe8e2;
+	--line-strong: #b9b3a8;
 	--scene-sky: #e9e4dc;
 	--scene-moon: #f3ede1;
 	--scene-moon-core: #fbf7ee;
@@ -49,6 +50,7 @@
 		--on-accent: #1b1a1d;
 		--surface: #232126;
 		--surface-2: #2e2c33;
+		--line-strong: #5a5760;
 		--scene-sky: #17161b;
 		--scene-moon: #211e2e;
 		--scene-moon-core: #2c2740;
@@ -70,6 +72,7 @@
 	--on-accent: #1b1a1d;
 	--surface: #232126;
 	--surface-2: #2e2c33;
+	--line-strong: #5a5760;
 	--scene-sky: #17161b;
 	--scene-moon: #211e2e;
 	--scene-moon-core: #2c2740;
@@ -90,6 +93,7 @@
 	--on-accent: #000;
 	--surface: #000;
 	--surface-2: #141416;
+	--line-strong: #45434a;
 	--scene-sky: #000;
 	--scene-moon: #0e0d14;
 	--scene-moon-core: #17141f;
@@ -185,7 +189,10 @@ button {
 input[type="text"],
 input[type="url"],
 select {
+	box-sizing: border-box;
 	font-size: max(16px, 1em);
+	background: var(--bg);
+	border-color: var(--line-strong);
 }
 
 input[type="color"] {
@@ -210,10 +217,11 @@ button {
 	color: var(--on-accent);
 }
 
+/* Ruhige Knöpfe: gefüllte Fläche ohne Rand; die Startkarte setzt einen Rand dazu. */
 button.secondary {
-	background: transparent;
+	background: var(--surface-2);
 	color: inherit;
-	border-color: var(--line);
+	border-color: var(--quiet-border, transparent);
 }
 
 .hint {
@@ -680,51 +688,81 @@ button.swatch {
 .log-panel {
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem;
 	overflow: hidden;
 }
 
 .roll-log {
 	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
 	min-height: 4rem;
 	margin: 0;
-	padding: 0;
+	padding: 12px 4px;
 	overflow-y: auto;
 	-webkit-overflow-scrolling: touch;
 	list-style: none;
 }
 
+/* Wenige Würfe stehen unten bei der Eingabe; mit vielen bleibt die Liste scrollbar. */
+.roll-log > :first-child {
+	margin-top: auto;
+}
+
 .roll {
-	padding: 0.35rem 0;
-	border-bottom: 1px solid var(--line);
+	flex-direction: column;
+	align-items: stretch;
+	gap: 2px;
+	padding: 0;
+	border: 0;
 	overflow-wrap: anywhere;
 }
 
-.hidden-roll {
-	opacity: 0.75;
-	font-style: italic;
+.roll-meta {
+	color: var(--muted);
+	font-size: 12px;
 }
 
-.roll-head .badge {
-	margin-left: 0.5rem;
+.roll-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 8px;
 }
 
 .roll-formula {
+	font-size: 14px;
+	font-weight: 400;
+}
+
+.roll-detail {
 	color: var(--muted);
+	font-size: 13px;
 }
 
 .roll-total {
-	font-size: 1.15em;
+	margin-left: auto;
+	font-size: 20px;
+	font-variant-numeric: tabular-nums;
 }
 
 .dropped {
 	color: var(--muted);
 }
 
+.roll-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0 -12px -12px;
+	padding: 8px;
+	border-top: 1px solid var(--line);
+}
+
 .quick-dice {
 	display: grid;
-	gap: 0.25rem;
-	font-size: 0.85rem;
+	gap: 4px;
+	font-size: 13px;
 	white-space: nowrap;
 }
 
@@ -734,7 +772,7 @@ button.swatch {
 
 .roll-form {
 	display: flex;
-	gap: 0.5rem;
+	gap: 8px;
 }
 
 .roll-form input {
@@ -1043,6 +1081,7 @@ button.swatch {
 	flex-direction: column;
 	gap: 1.25rem;
 	--radius-control: 10px;
+	--quiet-border: var(--line-strong);
 
 	width: min(27.5rem, 100%);
 	margin: auto;
@@ -1205,6 +1244,7 @@ button.icon-button {
 	gap: 6px;
 	padding: 0 12px;
 	font-size: 14px;
+	background: transparent;
 	border-color: transparent;
 }
 

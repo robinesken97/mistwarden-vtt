@@ -825,7 +825,11 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	function render(): void {
 		if (disposed) return;
 		statusDot.dataset.status = conn.status;
-		statusText.textContent = statusLabel[conn.status];
+		const playerCount = entitiesOf("player").length;
+		statusText.textContent =
+			isGm && conn.status === "online"
+				? `${statusLabel.online} · ${t("status.players", { count: playerCount })}`
+				: statusLabel[conn.status];
 		title.textContent = conn.roomName ?? "Mistwarden";
 		document.title = conn.roomName
 			? `${conn.roomName} – Mistwarden`
