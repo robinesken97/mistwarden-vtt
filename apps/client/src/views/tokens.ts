@@ -12,8 +12,10 @@ import {
 } from "@mistwarden/protocol";
 import { api, assetMeta, errorText } from "../api.ts";
 import { button, h } from "../dom.ts";
+import { t } from "../i18n.ts";
 import type { SyncConnection } from "../net/connection.ts";
 import type { StageToken, WorldPoint } from "../render/stage.ts";
+import { confirmDialog, promptDialog } from "../ui.ts";
 
 export interface TokenToolsContext {
 	conn: SyncConnection;
@@ -257,10 +259,13 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		hideButton,
 		button(
 			"Umbenennen",
-			() => {
+			async () => {
 				const e = byId(selectedId);
 				if (!e) return;
-				const name = prompt("Name des Tokens", tokenData(e).name);
+				const name = await promptDialog(
+					t("token.namePrompt"),
+					tokenData(e).name,
+				);
 				if (name !== null)
 					update(e.id, { name: name.trim().slice(0, 40) }, false);
 			},
@@ -268,9 +273,15 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		),
 		button(
 			"Löschen",
-			() => {
+			async () => {
 				const e = byId(selectedId);
-				if (!e || !confirm(`„${tokenData(e).name || "Token"}“ löschen?`))
+				if (
+					!e ||
+					!(await confirmDialog(
+						t("token.deleteConfirm", { name: tokenData(e).name || "Token" }),
+						t("common.delete"),
+					))
+				)
 					return;
 				selectedId = null;
 				ctx.run({ op: "delete", kind: "token", id: e.id });

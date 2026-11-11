@@ -26,7 +26,7 @@ import type {
 	StageTool,
 	WorldPoint,
 } from "../render/stage.ts";
-import { panelHead } from "../ui.ts";
+import { confirmDialog, panelHead } from "../ui.ts";
 
 export interface TableToolsContext {
 	conn: SyncConnection;
@@ -211,16 +211,16 @@ export function createTableTools(ctx: TableToolsContext) {
 		ctx.run({ op: "delete", kind: "drawing", id });
 	}
 
-	function eraseMany(all: boolean): void {
+	async function eraseMany(all: boolean): Promise<void> {
 		const targets = sceneDrawings().filter((e) => {
 			const d = e.data as DrawingData;
 			return all ? canErase(d) : d.ownerId === myPlayerId();
 		});
 		if (targets.length === 0) return;
-		const question = all
-			? `Alle ${targets.length} Zeichnungen dieser Szene löschen?`
-			: `Deine ${targets.length} Zeichnungen in dieser Szene löschen?`;
-		if (!confirm(question)) return;
+		const question = t(all ? "draw.clearAllConfirm" : "draw.clearOwnConfirm", {
+			count: targets.length,
+		});
+		if (!(await confirmDialog(question, t("common.delete")))) return;
 		for (const e of targets) erase(e.id);
 	}
 
@@ -434,7 +434,7 @@ export function createTableTools(ctx: TableToolsContext) {
 			: []),
 		rollError,
 	);
-	const toast = h("div", { className: "roll-toast", hidden: true });
+	const toast = h("div", { className: "toast", hidden: true });
 
 	function rolls(): Entity[] {
 		return [...ctx.conn.entities.values()]

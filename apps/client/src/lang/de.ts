@@ -33,4 +33,13 @@ export const de = {
 	"link.regenerateConfirm":
 		"Neuen Spieler-Link erzeugen? Der alte Link funktioniert dann nicht mehr; wer schon drin ist, bleibt drin.",
 	"dice.title": "Würfel",
+	"common.delete": "Löschen",
+	"draw.clearAllConfirm": "Alle {count} Zeichnungen dieser Szene löschen?",
+	"draw.clearOwnConfirm": "Deine {count} Zeichnungen in dieser Szene löschen?",
+	"token.namePrompt": "Name des Tokens",
+	"token.deleteConfirm": "„{name}“ löschen?",
+	"handout.deleteConfirm": "Handout löschen?",
+	"note.deleteConfirm": "Notiz löschen?",
+	"fog.namePrompt": "Name der Fog-Fläche",
+	"fog.deleteConfirm": "Diese Fog-Fläche löschen?",
 } as const;

@@ -33,4 +33,13 @@ export const en: Record<keyof typeof de, string> = {
 	"link.regenerateConfirm":
 		"Create a new player link? The old link stops working; players already in the room stay in.",
 	"dice.title": "Dice",
+	"common.delete": "Delete",
+	"draw.clearAllConfirm": "Delete all {count} drawings in this scene?",
+	"draw.clearOwnConfirm": "Delete your {count} drawings in this scene?",
+	"token.namePrompt": "Token name",
+	"token.deleteConfirm": "Delete “{name}”?",
+	"handout.deleteConfirm": "Delete handout?",
+	"note.deleteConfirm": "Delete note?",
+	"fog.namePrompt": "Fog area name",
+	"fog.deleteConfirm": "Delete this fog area?",
 };
