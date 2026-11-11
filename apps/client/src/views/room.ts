@@ -14,6 +14,7 @@ import {
 } from "@mistwarden/protocol";
 import { ApiError, api, assetMeta, errorText, playerLink } from "../api.ts";
 import { button, errorLine, h } from "../dom.ts";
+import { LANG_NAMES, LANGS, parseLang, t } from "../i18n.ts";
 import {
 	ActionRejected,
 	defaultSocketUrl,
@@ -28,7 +29,6 @@ import {
 	applyTheme,
 	parseAccent,
 	parseTheme,
-	THEME_LABELS,
 	THEMES,
 } from "../theme.ts";
 import { createCard } from "./card.ts";
@@ -146,10 +146,22 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				},
 				"secondary",
 			);
+	const langSelect = h("select");
+	langSelect.append(
+		...LANGS.map((value) =>
+			h("option", { value, textContent: LANG_NAMES[value] }),
+		),
+	);
+	langSelect.value = document.documentElement.lang;
+	langSelect.addEventListener("change", () => {
+		storage.setLang(parseLang(langSelect.value));
+		// shortcut: Neuladen statt alle Views neu aufzubauen; ändern, sobald Views ihre Texte selbst aktualisieren können.
+		location.reload();
+	});
 	const themeSelect = h("select");
 	themeSelect.append(
 		...THEMES.map((value) =>
-			h("option", { value, textContent: THEME_LABELS[value] }),
+			h("option", { value, textContent: t(`theme.${value}`) }),
 		),
 	);
 	themeSelect.value = storage.theme();
@@ -174,7 +186,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		applyAccent(accent);
 	});
 	const accentReset = button(
-		"Standard",
+		t("settings.accentReset"),
 		() => {
 			storage.setAccent(null);
 			applyAccent(null);
@@ -190,8 +202,15 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		players,
 		gmPanel,
 		error,
-		h("label", {}, "Farbschema ", themeSelect),
-		h("p", {}, h("label", {}, "Akzentfarbe ", accentInput), " ", accentReset),
+		h("label", {}, `${t("settings.theme")} `, themeSelect),
+		h(
+			"p",
+			{},
+			h("label", {}, `${t("settings.accent")} `, accentInput),
+			" ",
+			accentReset,
+		),
+		h("label", {}, `${t("settings.language")} `, langSelect),
 		h("p", {}, leave),
 	);
 

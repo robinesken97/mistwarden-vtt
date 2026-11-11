@@ -1,6 +1,7 @@
 // Sitzungs-Tokens im Browser, damit ein Neuladen die Anmeldung übersteht.
 // localStorage kann fehlen oder werfen (privater Modus); dann gilt das Token nur bis zum Neuladen.
 
+import { type Lang, parseLang } from "./i18n.ts";
 import { parseAccent, parseTheme, type Theme } from "./theme.ts";
 
 const memory = new Map<string, string>();
@@ -10,6 +11,7 @@ const LAST_ROOM_KEY = "mistwarden.lastPlayerRoom";
 // Derselbe Schlüssel steht in index.html, damit das Theme vor dem ersten Zeichnen gilt.
 const THEME_KEY = "mistwarden.theme";
 const ACCENT_KEY = "mistwarden.accent";
+const LANG_KEY = "mistwarden.lang";
 
 function read(key: string): string | null {
 	try {
@@ -36,6 +38,9 @@ export const storage = {
 		write(THEME_KEY, theme === "system" ? null : theme),
 	accent: () => parseAccent(read(ACCENT_KEY)),
 	setAccent: (accent: string | null) => write(ACCENT_KEY, accent),
+	/** Gewählte Sprache; null heißt: der Sprache des Geräts folgen. */
+	lang: () => parseLang(read(LANG_KEY)),
+	setLang: (lang: Lang | null) => write(LANG_KEY, lang),
 	gmToken: () => read(GM_KEY),
 	setGmToken: (token: string | null) => write(GM_KEY, token),
 	playerToken: (roomId: string) => read(playerKey(roomId)),

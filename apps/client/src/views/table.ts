@@ -7,6 +7,8 @@ import {
 	type Entity,
 	GM_COLOR,
 	type GridData,
+	MAX_DICE,
+	MAX_SIDES,
 	type MeasureData,
 	type PlayerData,
 	parseDice,
@@ -16,6 +18,7 @@ import {
 } from "@mistwarden/protocol";
 import { button, h } from "../dom.ts";
 import { simplifyStroke } from "../draw/shapes.ts";
+import { t } from "../i18n.ts";
 import { ActionRejected, type SyncConnection } from "../net/connection.ts";
 import type {
 	StageDrawing,
@@ -227,7 +230,11 @@ export function createTableTools(ctx: TableToolsContext) {
 	async function roll(formula: string): Promise<void> {
 		const parsed = parseDice(formula);
 		if (!parsed.ok) {
-			rollError.textContent = parsed.error;
+			rollError.textContent = t(`dice.${parsed.error}`, {
+				part: parsed.part ?? "",
+				maxSides: MAX_SIDES,
+				maxDice: MAX_DICE,
+			});
 			rollError.hidden = false;
 			return;
 		}
