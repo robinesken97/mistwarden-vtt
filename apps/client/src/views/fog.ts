@@ -8,9 +8,10 @@ import {
 	type GridData,
 	MAX_FOG_COORDS,
 } from "@mistwarden/protocol";
-import { button, h } from "../dom.ts";
+import { button, h, iconButton } from "../dom.ts";
 import { brushToPolygons, polygonToPolygons } from "../fog/shapes.ts";
 import { t } from "../i18n.ts";
+import { ICONS } from "../icons.ts";
 import type { SyncConnection } from "../net/connection.ts";
 import type { StageFog, StageTool, WorldPoint } from "../render/stage.ts";
 import { confirmDialog, promptDialog } from "../ui.ts";
@@ -151,12 +152,12 @@ export function createFogTools(ctx: FogToolsContext) {
 	// --- HUD: Werkzeuge (nur GM) ---
 	const toolButtons = new Map<ToolName, HTMLButtonElement>();
 	const toolSwitch = h("span", { className: "tool-switch" });
-	for (const [name, label] of [
-		["select", "Auswählen"],
-		["polygon", "Fog: Polygon"],
-		["brush", "Fog: Pinsel"],
+	for (const [name, key, paths] of [
+		["select", "tool.select", ICONS.select],
+		["polygon", "tool.fogPolygon", ICONS.fogPolygon],
+		["brush", "tool.fogBrush", ICONS.fogBrush],
 	] as const) {
-		const b = button(label, () => setTool(name), "secondary");
+		const b = iconButton(paths, t(key), () => setTool(name));
 		toolButtons.set(name, b);
 		toolSwitch.append(b);
 	}

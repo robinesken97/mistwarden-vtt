@@ -1,6 +1,7 @@
 // Gemeinsame Bausteine der Raum-Oberfläche: Panels (immer nur eines offen) und Dialoge.
-import { button, h } from "./dom.ts";
+import { button, h, iconButton } from "./dom.ts";
 import { t } from "./i18n.ts";
+import { ICONS } from "./icons.ts";
 
 interface Hideable {
 	hidden: HTMLElement["hidden"];
@@ -26,8 +27,7 @@ export function createPanels(onChange: () => void = () => {}) {
 
 /** Kopf jedes Panels: Titel links, Schließen immer an derselben Stelle rechts. */
 export function panelHead(title: string, onClose: () => void): HTMLElement {
-	const close = button("✕", onClose, "secondary");
-	close.setAttribute("aria-label", t("panel.close"));
+	const close = iconButton(ICONS.close, t("panel.close"), onClose, false);
 	return h("div", { className: "panel-head" }, h("h2", {}, title), close);
 }
 

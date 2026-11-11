@@ -16,9 +16,10 @@ import {
 	type RollTerm,
 	type SceneData,
 } from "@mistwarden/protocol";
-import { button, h } from "../dom.ts";
+import { button, h, iconButton } from "../dom.ts";
 import { simplifyStroke } from "../draw/shapes.ts";
 import { t } from "../i18n.ts";
+import { ICONS } from "../icons.ts";
 import { ActionRejected, type SyncConnection } from "../net/connection.ts";
 import type {
 	StageDrawing,
@@ -281,26 +282,20 @@ export function createTableTools(ctx: TableToolsContext) {
 	// --- HUD: Werkzeuge für alle ---
 	const toolButtons = new Map<ToolName, HTMLButtonElement>();
 	const toolSwitch = h("span", { className: "tool-switch" });
-	for (const [name, label] of [
-		["measure", "Messen"],
-		["draw", "Zeichnen"],
+	for (const [name, key, paths] of [
+		["measure", "tool.measure", ICONS.measure],
+		["draw", "tool.draw", ICONS.draw],
 	] as const) {
-		const b = button(
-			label,
-			() => setTool(tool === name ? null : name),
-			"secondary",
+		const b = iconButton(paths, t(key), () =>
+			setTool(tool === name ? null : name),
 		);
 		toolButtons.set(name, b);
 		toolSwitch.append(b);
 	}
-	const logButton = button(
-		"Würfel",
-		() => {
-			ctx.togglePanel(logPanel);
-			if (!logPanel.hidden) scrollLog();
-		},
-		"secondary",
-	);
+	const logButton = iconButton(ICONS.dice, t("dice.title"), () => {
+		ctx.togglePanel(logPanel);
+		if (!logPanel.hidden) scrollLog();
+	});
 
 	const measureLabel = h("div", { className: "measure-label", hidden: true });
 

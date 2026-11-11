@@ -13,8 +13,9 @@ import {
 	type SceneData,
 } from "@mistwarden/protocol";
 import { ApiError, api, assetMeta, errorText, playerLink } from "../api.ts";
-import { button, h } from "../dom.ts";
+import { button, h, iconButton } from "../dom.ts";
 import { t } from "../i18n.ts";
+import { ICONS } from "../icons.ts";
 import {
 	ActionRejected,
 	defaultSocketUrl,
@@ -110,7 +111,9 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		menuButton.classList.toggle("active", !panel.hidden);
 		table.render();
 	});
-	const menuButton = button(t("menu.title"), () => panels.toggle(panel));
+	const menuButton = iconButton(ICONS.menu, t("menu.title"), () =>
+		panels.toggle(panel),
+	);
 	const hud = h(
 		"header",
 		{ className: "hud" },
@@ -197,12 +200,20 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		error.show(undoText[result]);
 		renderHistory();
 	}
-	const undoButton = button("↶", () => void step("undo"), "secondary");
-	undoButton.title = "Rückgängig (Strg/⌘+Z)";
-	undoButton.setAttribute("aria-label", "Rückgängig");
-	const redoButton = button("↷", () => void step("redo"), "secondary");
-	redoButton.title = "Wiederholen (Strg/⌘+Umschalt+Z)";
-	redoButton.setAttribute("aria-label", "Wiederholen");
+	const undoButton = iconButton(
+		ICONS.undo,
+		t("history.undo"),
+		() => void step("undo"),
+		false,
+	);
+	undoButton.title = t("history.undoHint");
+	const redoButton = iconButton(
+		ICONS.redo,
+		t("history.redo"),
+		() => void step("redo"),
+		false,
+	);
+	redoButton.title = t("history.redoHint");
 	function renderHistory(): void {
 		undoButton.disabled = !history.canUndo;
 		redoButton.disabled = !history.canRedo;
