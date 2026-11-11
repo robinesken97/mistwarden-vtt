@@ -253,8 +253,8 @@ button.secondary {
 select {
 	appearance: none;
 	-webkit-appearance: none;
-	/* Text mittig: links so viel Abstand wie rechts für den Pfeil. */
-	padding: 0 36px;
+	/* Text mittig zwischen linker Kante und Pfeil (nicht im ganzen Feld). */
+	padding: 0 36px 0 12px;
 	text-align: center;
 	text-align-last: center;
 	text-overflow: ellipsis;
