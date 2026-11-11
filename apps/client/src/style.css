@@ -3,7 +3,9 @@
 	color-scheme: light dark;
 	--bg: #f4f2ee;
 	--fg: #1d1b19;
-	--muted: #6b655e;
+	--muted: #5f5a53;
+	/* Leicht gedämpfter Text (Formeln, ruhende Werkzeuge): Textfarbe, etwas zur Fläche gemischt. */
+	--fg-soft: color-mix(in srgb, var(--fg) 85%, var(--surface));
 	--line: #d6d1c9;
 	--accent: #5b4b8a;
 	--on-accent: #fff;
@@ -49,7 +51,8 @@
 		--bad: #f2a09a;
 		--switch-off: #4a4850;
 		--fg: #ecebe8;
-		--muted: #a29d96;
+		--muted: #b5b0a8;
+		--ok: #7fd39a;
 		--line: #3a383d;
 		--accent: #a99be0;
 		--on-accent: #1b1a1d;
@@ -73,7 +76,8 @@
 	--bad: #f2a09a;
 	--switch-off: #4a4850;
 	--fg: #ecebe8;
-	--muted: #a29d96;
+	--muted: #b5b0a8;
+	--ok: #7fd39a;
 	--line: #3a383d;
 	--accent: #a99be0;
 	--on-accent: #1b1a1d;
@@ -97,6 +101,7 @@
 	--switch-off: #4a4850;
 	--fg: #ecebe8;
 	--muted: #a8a39b;
+	--ok: #7fd39a;
 	--line: #2c2b30;
 	--accent: #a99be0;
 	--on-accent: #000;
@@ -472,6 +477,13 @@ main.room-mode {
 	height: 24px;
 	margin: 0 4px;
 	background: var(--line);
+}
+
+/* Spieler: Szenenname ruhig neben dem Raumnamen (GM hat dort den Szenenknopf). */
+.hud > .hud-scene {
+	padding: 0 8px;
+	color: var(--muted);
+	font-size: 14px;
 }
 
 .hud-space {
@@ -1211,6 +1223,7 @@ button.swatch::before {
 }
 
 .roll-formula {
+	color: var(--fg-soft);
 	font-size: 14px;
 	font-weight: 400;
 }
@@ -1299,6 +1312,14 @@ button.swatch::before {
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+.toast .icon {
+	flex: none;
+	width: 18px;
+	height: 18px;
+	margin-right: 8px;
+	color: var(--ok);
 }
 
 .toast.error {
@@ -1835,9 +1856,14 @@ button.icon-button.active {
 }
 
 .subtools .icon-button.active {
-	color: inherit;
+	color: var(--fg);
 	background: var(--accent-soft);
 	box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.toolbar .icon-button,
+.subtools .icon-button {
+	color: var(--fg-soft);
 }
 
 .toolbar .icon-button span,

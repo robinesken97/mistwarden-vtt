@@ -204,7 +204,6 @@ export const en: Record<keyof typeof de, string> = {
 		"Fog areas cover the map. Reveal: switch an area off. Draw with “Polygon” (tap corners, tap the first point to close), “Rectangle” or “Brush”. Pan and zoom while drawing with two fingers or the mouse wheel.",
 	"fog.coverAll": "Cover all",
 	"fog.revealAll": "Reveal all",
-	"settings.display": "Display",
 	"fog.animate": "Animate fog",
 	"fog.tapCorners": "Tap corners",
 	"fog.points": "{count} points",
@@ -264,4 +263,7 @@ export const en: Record<keyof typeof de, string> = {
 	"handout.new": "New handout",
 	"handout.recipientsLabel": "Recipients",
 	"handout.show": "Show",
+	"settings.device": "This device",
+	"link.copied": "Link copied",
+	"status.reconnected": "Connection restored",
 };

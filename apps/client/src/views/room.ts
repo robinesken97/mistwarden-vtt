@@ -162,6 +162,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	);
 	// Fehler erscheinen als Meldung über der Karte, auch wenn kein Panel offen ist.
 	const error = createToast("error");
+	const notice = createToast("info");
 	const stageMessage = h("p", { className: "stage-message", hidden: true });
 
 	const roleText = h("p", { className: "hint" });
@@ -542,10 +543,12 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		dock,
 		table.measureLabel,
 		table.logPanel,
-		h("div", { className: "toasts" }, error.el, table.toast),
+		h("div", { className: "toasts" }, error.el, notice.el, table.toast),
 		card.el,
 	);
-	panel.insertBefore(fog.settingsSection, deviceRow);
+	// Alles, was nur dieses Gerät betrifft, steht unter einer Überschrift.
+	deviceRow.before(h("h2", {}, t("settings.device")));
+	deviceRow.after(fog.settingsSection);
 
 	/** Antippen wählt genau ein Objekt aus – Token oder Fog-Fläche. */
 	const selectTarget = (target: StageTarget | null) => {
@@ -897,7 +900,10 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		linkInput,
 		button(t("link.copy"), async () => {
 			linkInput.select();
-			await navigator.clipboard?.writeText(linkInput.value).catch(() => {});
+			await navigator.clipboard
+				?.writeText(linkInput.value)
+				.then(() => notice.show(t("link.copied")))
+				.catch(() => {});
 		}),
 		button(
 			t("link.regenerate"),
@@ -1026,8 +1032,12 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	}
 
 	// --- Darstellung ---
+	let lastStatus = conn.status;
 	function render(): void {
 		if (disposed) return;
+		if (conn.status === "online" && lastStatus === "offline")
+			notice.show(t("status.reconnected"));
+		lastStatus = conn.status;
 		statusDot.dataset.status = conn.status;
 		const playerCount = entitiesOf("player").length;
 		statusText.textContent =
@@ -1059,7 +1069,9 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		const previewing = shown !== undefined && shown.id !== activeId;
 		sceneText.textContent = previewing
 			? t("scene.preview", { name: shownName })
-			: t("scene.current", { name: shownName });
+			: isGm
+				? t("scene.current", { name: shownName })
+				: shownName;
 		sceneText.classList.toggle("preview", previewing);
 		backToActive.hidden = !previewing;
 
