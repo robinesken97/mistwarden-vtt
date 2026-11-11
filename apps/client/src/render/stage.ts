@@ -17,6 +17,7 @@ import {
 	type WebGLRenderer,
 } from "pixi.js";
 import { hitDrawing } from "../draw/shapes.ts";
+import { type RectGrid, rectCorners } from "../fog/rect.ts";
 import { pointInFog } from "../fog/shapes.ts";
 import {
 	attachGestures,
@@ -56,6 +57,8 @@ export type StageTool =
 	| { type: "select" }
 	| { type: "polygon" }
 	| { type: "brush"; radius: number }
+	/** Rechteck aufziehen; mit `grid` rasten die Kanten ein. Ergebnis kommt über `polygonDone`. */
+	| { type: "rect"; grid: RectGrid | null }
 	| { type: "measure" }
 	| {
 			type: "draw";
@@ -243,6 +246,8 @@ export async function createStage(
 	let tool: StageTool = { type: "select" };
 	let polygon: WorldPoint[] = [];
 	let stroke: WorldPoint[] | null = null;
+	/** Rechteck, das gerade aufgezogen wird. */
+	let box: { a: WorldPoint; b: WorldPoint } | null = null;
 	/** Laufende Zeichnung (Freihand: alle Punkte, Formen: Anfang und aktuelles Ende). */
 	let sketch: WorldPoint[] | null = null;
 	/** Messlinie von Feldmitte zu Feldmitte; bleibt nach dem Loslassen stehen. */
@@ -353,6 +358,7 @@ export async function createStage(
 					callbacks.brushDone([camera.screenToWorld(x, y)], tool.radius);
 					return;
 				}
+				if (tool.type === "rect") return;
 				if (tool.type === "measure") return clearRuler();
 				if (tool.type === "erase") return eraseAt(x, y);
 				if (tool.type === "draw") {
@@ -366,6 +372,11 @@ export async function createStage(
 			dragStart(x, y) {
 				if (tool.type === "brush") {
 					stroke = [camera.screenToWorld(x, y)];
+					return;
+				}
+				if (tool.type === "rect") {
+					const p = camera.screenToWorld(x, y);
+					box = { a: p, b: p };
 					return;
 				}
 				if (tool.type === "measure") {
@@ -412,6 +423,11 @@ export async function createStage(
 					requestRender();
 					return;
 				}
+				if (box) {
+					box.b = camera.screenToWorld(x, y);
+					requestRender();
+					return;
+				}
 				if (ruler && tool.type === "measure") {
 					ruler.b = cellCenter(x, y);
 					requestRender();
@@ -451,6 +467,13 @@ export async function createStage(
 					requestRender();
 					return;
 				}
+				if (box && tool.type === "rect") {
+					const corners = rectCorners(box.a, box.b, tool.grid);
+					box = null;
+					if (corners.length > 0) callbacks.polygonDone(corners);
+					requestRender();
+					return;
+				}
 				if (sketch && tool.type === "draw") {
 					const done = sketch;
 					sketch = null;
@@ -477,7 +500,12 @@ export async function createStage(
 				requestRender();
 			},
 			context(x, y) {
-				if (tool.type === "polygon" || tool.type === "brush") return;
+				if (
+					tool.type === "polygon" ||
+					tool.type === "brush" ||
+					tool.type === "rect"
+				)
+					return;
 				const target = tool.type === "select" ? hitTest(x, y) : null;
 				if (tool.type === "select") callbacks.context(target, { x, y });
 				if (!target) callbacks.ping(camera.screenToWorld(x, y));
@@ -597,6 +625,16 @@ export async function createStage(
 				g.circle(p.x, p.y, (i === 0 ? 7 : 4) / camera.zoom).fill({
 					color: i === 0 ? 0xffd23f : 0xffffff,
 				});
+			}
+		}
+		if (box && tool.type === "rect") {
+			const flat = rectCorners(box.a, box.b, tool.grid).flatMap((p) => [
+				p.x,
+				p.y,
+			]);
+			if (flat.length > 0) {
+				g.poly(flat).fill({ color: 0x000000, alpha: 0.35 });
+				g.poly(flat).stroke({ width: line, color: 0xffd23f });
 			}
 		}
 		if (stroke && stroke.length > 0 && tool.type === "brush") {
@@ -731,6 +769,7 @@ export async function createStage(
 		setTool(next) {
 			tool = next;
 			sketch = null;
+			box = null;
 			erasing = false;
 			if (next.type !== "measure") clearRuler();
 			if (next.type !== "polygon" && polygon.length > 0) {

@@ -246,7 +246,10 @@ button.secondary {
 select {
 	appearance: none;
 	-webkit-appearance: none;
-	padding-right: 36px;
+	/* Text mittig: links so viel Abstand wie rechts für den Pfeil. */
+	padding: 0 36px;
+	text-align: center;
+	text-align-last: center;
 	text-overflow: ellipsis;
 	background-image:
 		linear-gradient(45deg, transparent 50%, var(--muted) 50%),
@@ -436,10 +439,32 @@ main.room-mode {
 	padding: 0 4px;
 }
 
+.hud-conn {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 0 8px;
+	white-space: nowrap;
+}
+
+.hud-conn .dot {
+	flex: none;
+	width: 8px;
+	height: 8px;
+	margin: 0;
+}
+
 .hud-status {
-	padding-right: 8px;
 	color: var(--muted);
 	font-size: 13px;
+}
+
+.hud-divider {
+	flex: none;
+	width: 1px;
+	height: 24px;
+	margin: 0 4px;
+	background: var(--line);
 }
 
 .hud-space {
@@ -693,19 +718,14 @@ input.num {
 
 /* --- Auswahlleiste für Tokens (unten, gut mit dem Daumen erreichbar) --- */
 
-/* Mittig über left/right/auto statt left: 50 %: sonst steht nur die halbe Breite zur Verfügung. */
+/* Die Leisten stehen im Stapel `.dock` über der Werkzeugleiste. */
 .selection-bar {
-	position: absolute;
-	left: 8px;
-	right: 8px;
-	bottom: calc(var(--bar-bottom) + max(0.75rem, env(safe-area-inset-bottom)));
 	box-sizing: border-box;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 4px;
-	width: fit-content;
-	max-width: calc(100% - 16px);
-	margin-inline: auto;
+	max-width: 100%;
 	padding: 4px;
 	font-size: 14px;
 	background: var(--surface);
@@ -716,6 +736,12 @@ input.num {
 
 .selection-bar[hidden] {
 	display: none;
+}
+
+/* Reicht die Breite nicht (Hochformat neben offenem Panel), bricht die Leiste um und
+   jede Zeile füllt die Breite. */
+.selection-bar > * {
+	flex: 1 1 auto;
 }
 
 /* Mehrzeilige Leisten: feste Reihen, jede Reihe füllt die Breite, alle Kanten bündig.
@@ -751,6 +777,11 @@ input.num {
 	min-height: 48px;
 }
 
+/* Symbolknopf mit Fläche (Drehen): Symbol in voller Größe neben dem Wert. */
+.selection-bar .icon-button.filled {
+	background: var(--surface-2);
+}
+
 /* Entweder-oder-Auswahl: Knöpfe in einer gemeinsamen Fläche, der gewählte in Akzentfarbe. */
 .bar-group.segmented {
 	gap: 0;
@@ -781,9 +812,13 @@ input.num {
 	color: var(--fg);
 }
 
+/* Texte in Leisten sind so hoch wie die Knöpfe, damit jede Leiste gleich hoch ist. */
 .selection-bar > .hint,
 .selection-bar .bar-group > span {
-	padding: 0 8px;
+	display: flex;
+	align-items: center;
+	min-height: 48px;
+	padding: 0 12px;
 }
 
 /* `hidden` muss gegen display: inline-flex gewinnen. */
@@ -801,80 +836,93 @@ input.num {
 	white-space: nowrap;
 }
 
-/* --- Werkzeug-Umschalter (GM) --- */
+/* --- Werkzeuge: unten in Daumenhöhe, am Laptop links --- */
 
-.tool-switch {
-	display: inline-flex;
-	gap: 0.25rem;
-	flex-wrap: wrap;
-}
-
-.tool-switch[hidden] {
-	display: none;
-}
-
-.tool-switch button.active {
-	background: var(--accent);
-	border-color: var(--accent);
-	color: var(--on-accent);
-}
-
-/* --- Werkzeugleiste: unten in Daumenhöhe, am Laptop links --- */
-
-.room {
-	--bar-bottom: 78px;
-}
-
-.toolbar {
+/* Stapel am unteren Rand: Auswahl- und Einstellungsleisten, darunter Unterwerkzeuge und Leiste.
+   Mittig in der freien Fläche; ein offenes Panel (320 + 2 × 8 px) zählt nicht dazu. */
+.dock {
 	position: absolute;
-	left: 50%;
+	left: 8px;
+	right: 8px;
 	bottom: max(12px, env(safe-area-inset-bottom));
-	transform: translateX(-50%);
 	display: flex;
-	gap: 2px;
-	max-width: calc(100vw - 16px);
-	overflow-x: auto;
-	white-space: nowrap;
-	padding: 4px;
-	background: var(--surface);
-	border: 1px solid var(--line);
-	border-radius: 16px;
-	box-shadow: 0 8px 24px var(--shadow-color);
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	pointer-events: none;
 }
 
-.toolbar .tool-switch {
-	flex-wrap: nowrap;
-	gap: 2px;
-}
-
-/* Bei offenem Panel sitzt die Leiste mittig im freien Bereich links davon (Panel 320 + 2 × 8 px). */
-@media (max-width: 1099.98px), (pointer: coarse) {
-	.room.panel-open .toolbar {
-		left: calc((100% - 336px) / 2);
-		max-width: calc(100% - 352px);
-	}
-}
-
-.room.panel-open .selection-bar {
+.room.panel-open .dock {
 	right: 344px;
 }
 
+.dock > *,
+.tools > * {
+	pointer-events: auto;
+}
+
+/* Im Dokument steht die Leiste vor ihren Unterwerkzeugen; gezeigt werden sie darüber. */
+.dock > .tools {
+	display: flex;
+	flex-direction: column-reverse;
+	align-items: center;
+	gap: 8px;
+	max-width: 100%;
+	pointer-events: none;
+}
+
+.toolbar,
+.subtools {
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	max-width: 100%;
+	padding: 4px;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+.toolbar {
+	gap: 2px;
+	border-radius: 16px;
+}
+
+.subtools {
+	gap: 4px;
+	border-radius: var(--radius-panel);
+}
+
+.subtools[hidden] {
+	display: none;
+}
+
+.subtools-divider {
+	flex: none;
+	width: 1px;
+	height: 28px;
+	margin: 0 4px;
+	background: var(--line);
+}
+
 @media (min-width: 1100px) and (pointer: fine) {
-	.room {
-		--bar-bottom: 0rem;
-	}
-
-	.toolbar {
-		top: 50%;
-		bottom: auto;
+	.dock > .tools {
+		position: fixed;
+		top: var(--hud-height, 52px);
+		bottom: 0;
 		left: max(12px, env(safe-area-inset-left));
-		transform: translateY(-50%);
-		flex-direction: column;
-		overflow: visible;
+		flex-direction: row;
 	}
 
-	.toolbar .tool-switch {
+	.toolbar,
+	.subtools {
 		flex-direction: column;
+	}
+
+	.subtools-divider {
+		width: 28px;
+		height: 1px;
+		margin: 4px 0;
 	}
 }
 
@@ -1565,45 +1613,74 @@ button.icon-button.active {
 	color: var(--on-accent);
 }
 
+/* Gruppenknopf 68 × 56; wird nur schmaler, wenn neben einem offenen Panel der Platz fehlt. */
 .toolbar .icon-button {
-	flex: none;
+	flex: 0 1 auto;
 	flex-direction: column;
 	gap: 3px;
 	width: 68px;
+	min-width: 56px;
 	height: 56px;
 	padding: 0 4px;
 	font-size: 11px;
 	border-radius: 12px;
 }
 
-.toolbar .icon-button span {
+.toolbar .icon-button.active {
+	font-weight: 600;
+}
+
+/* Unterwerkzeug 60 × 48 mit 18-px-Symbol; das gewählte ist getönt mit Akzentring. */
+.subtools .icon-button {
+	flex: none;
+	flex-direction: column;
+	gap: 2px;
+	width: 60px;
+	height: 48px;
+	padding: 0 2px;
+	font-size: 11px;
+}
+
+.subtools .icon {
+	width: 18px;
+	height: 18px;
+}
+
+.subtools .icon-button.active {
+	color: inherit;
+	background: var(--accent-soft);
+	box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.toolbar .icon-button span,
+.subtools .icon-button span {
 	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
-/* Fog-Werkzeuge: eine gemeinsame Fläche, damit sie als Gruppe lesbar sind. */
-.toolbar .fog-tool {
-	background: var(--surface-2);
-	border-radius: 12px 0 0 12px;
-}
-
-.toolbar .fog-tool + .fog-tool {
-	margin-left: -2px;
-	border-radius: 0 12px 12px 0;
-}
-
-/* Schalter in der Leiste (Einrasten): an = Symbol in Akzentfarbe, aus = blass. */
-.toolbar .icon-button[aria-pressed="true"] .icon {
+/* Schalter hinter den Unterwerkzeugen (Einrasten): an = Haken in Akzentfarbe, aus = blass. */
+.subtools .toggle[aria-pressed="true"] .icon {
 	color: var(--accent);
 }
 
-.toolbar .icon-button[aria-pressed="false"] .icon {
+.subtools .toggle[aria-pressed="false"] .icon {
 	opacity: 0.35;
+}
+
+@media (max-width: 1099.98px), (pointer: coarse) {
+	.subtools .toggle {
+		flex-direction: row;
+		gap: 6px;
+		width: auto;
+		padding: 0 12px;
+		font-size: 13px;
+	}
 }
 
 /* Schmale Geräte (iPad hochkant): in der Kopfzeile nur Symbole; der Text bleibt für Screenreader. */
 @media (max-width: 52rem) {
+	.hud-status,
 	.hud .icon-button span {
 		position: absolute;
 		width: 1px;
