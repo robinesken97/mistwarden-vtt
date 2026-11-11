@@ -1,5 +1,5 @@
 // Gemeinsame Bausteine der Raum-Oberfläche: Panels (immer nur eines offen) und Dialoge.
-import { button, h, iconButton } from "./dom.ts";
+import { button, h, icon, iconButton } from "./dom.ts";
 import { t } from "./i18n.ts";
 import { ICONS } from "./icons.ts";
 
@@ -92,14 +92,18 @@ const TOAST_MS = 6000;
 
 /** Kurze Meldung oben in der Mitte; verschwindet von selbst, null blendet sofort aus. */
 export function createToast(kind: "error" | "info") {
+	// Erfolgsmeldungen tragen einen Haken, Fehler nur den Text.
+	const text = h("span");
 	const el = h("div", { className: `toast ${kind}`, hidden: true });
+	if (kind === "info") el.append(icon(ICONS.check));
+	el.append(text);
 	el.setAttribute("role", kind === "error" ? "alert" : "status");
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	return {
 		el,
 		show(message: string | null): void {
 			clearTimeout(timer);
-			el.textContent = message ?? "";
+			text.textContent = message ?? "";
 			el.hidden = !message;
 			if (message) {
 				timer = setTimeout(() => {

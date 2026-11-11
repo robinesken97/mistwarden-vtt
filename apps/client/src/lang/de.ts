@@ -203,7 +203,6 @@ export const de = {
 		"Fog-Flächen decken ab. Aufdecken: Fläche ausschalten. Zeichnen mit „Polygon“ (Ecken antippen, ersten Punkt zum Schließen), „Rechteck“ oder „Pinsel“. Verschieben und Zoomen beim Zeichnen mit zwei Fingern bzw. Mausrad.",
 	"fog.coverAll": "Alle abdecken",
 	"fog.revealAll": "Alle aufdecken",
-	"settings.display": "Darstellung",
 	"fog.animate": "Nebel animieren",
 	"fog.tapCorners": "Ecken antippen",
 	"fog.points": "{count} Punkte",
@@ -263,4 +262,7 @@ export const de = {
 	"handout.new": "Neues Handout",
 	"handout.recipientsLabel": "Empfänger",
 	"handout.show": "Zeigen",
+	"settings.device": "Dieses Gerät",
+	"link.copied": "Link kopiert",
+	"status.reconnected": "Verbindung wiederhergestellt",
 } as const;

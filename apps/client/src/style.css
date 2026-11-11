@@ -3,7 +3,9 @@
 	color-scheme: light dark;
 	--bg: #f4f2ee;
 	--fg: #1d1b19;
-	--muted: #6b655e;
+	--muted: #5f5a53;
+	/* Leicht gedämpfter Text (Formeln, ruhende Werkzeuge): Textfarbe, etwas zur Fläche gemischt. */
+	--fg-soft: color-mix(in srgb, var(--fg) 85%, var(--surface));
 	--line: #d6d1c9;
 	--accent: #5b4b8a;
 	--on-accent: #fff;
@@ -49,7 +51,8 @@
 		--bad: #f2a09a;
 		--switch-off: #4a4850;
 		--fg: #ecebe8;
-		--muted: #a29d96;
+		--muted: #b5b0a8;
+		--ok: #7fd39a;
 		--line: #3a383d;
 		--accent: #a99be0;
 		--on-accent: #1b1a1d;
@@ -73,7 +76,8 @@
 	--bad: #f2a09a;
 	--switch-off: #4a4850;
 	--fg: #ecebe8;
-	--muted: #a29d96;
+	--muted: #b5b0a8;
+	--ok: #7fd39a;
 	--line: #3a383d;
 	--accent: #a99be0;
 	--on-accent: #1b1a1d;
@@ -97,6 +101,7 @@
 	--switch-off: #4a4850;
 	--fg: #ecebe8;
 	--muted: #a8a39b;
+	--ok: #7fd39a;
 	--line: #2c2b30;
 	--accent: #a99be0;
 	--on-accent: #000;
@@ -474,6 +479,13 @@ main.room-mode {
 	background: var(--line);
 }
 
+/* Spieler: Szenenname ruhig neben dem Raumnamen (GM hat dort den Szenenknopf). */
+.hud > .hud-scene {
+	padding: 0 8px;
+	color: var(--muted);
+	font-size: 14px;
+}
+
 .hud-space {
 	flex: 1;
 }
@@ -529,8 +541,9 @@ main.room-mode {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin: 0 -12px;
-	padding: 4px 4px 4px 16px;
+	/* Titel bündig mit dem Inhalt (12 px), das ✕-Symbol bündig mit dessen rechter Kante. */
+	margin: 0 -12px 12px;
+	padding: 4px 1px 4px 12px;
 	background: var(--surface);
 	border-bottom: 1px solid var(--line);
 }
@@ -544,6 +557,27 @@ main.room-mode {
 	font-weight: 600;
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
+}
+
+/* Direkt unter dem Kopf beginnt der Inhalt ohne zusätzlichen Abstand. */
+.panel-head + h2,
+.panel-head + h3,
+.panel-head + p,
+.panel-head + div > h2:first-child {
+	margin-top: 0;
+}
+
+.log-panel .panel-head {
+	margin-bottom: 0;
+}
+
+/* Schließen: 44-px-Tippziel bleibt, das ✕ selbst rückt an die rechte Inhaltskante
+   (der Strich beginnt 5,5 px innerhalb des 22-px-Symbols). */
+.panel .panel-head > button,
+.card .card-close > button,
+.menu .menu-head > button {
+	justify-content: flex-end;
+	padding: 0 5px 0 0;
 }
 
 .panel .panel-head h2 {
@@ -1211,6 +1245,7 @@ button.swatch::before {
 }
 
 .roll-formula {
+	color: var(--fg-soft);
 	font-size: 14px;
 	font-weight: 400;
 }
@@ -1299,6 +1334,14 @@ button.swatch::before {
 	border: 1px solid var(--line);
 	border-radius: 999px;
 	box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+.toast .icon {
+	flex: none;
+	width: 18px;
+	height: 18px;
+	margin-right: 8px;
+	color: var(--ok);
 }
 
 .toast.error {
@@ -1835,9 +1878,14 @@ button.icon-button.active {
 }
 
 .subtools .icon-button.active {
-	color: inherit;
+	color: var(--fg);
 	background: var(--accent-soft);
 	box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.toolbar .icon-button,
+.subtools .icon-button {
+	color: var(--fg-soft);
 }
 
 .toolbar .icon-button span,

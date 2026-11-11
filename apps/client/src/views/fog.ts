@@ -268,7 +268,6 @@ export function createFogTools(ctx: FogToolsContext) {
 	const settingsSection = h(
 		"div",
 		{},
-		h("h2", {}, t("settings.display")),
 		h("label", {}, animateBox, t("fog.animate")),
 	);
 
