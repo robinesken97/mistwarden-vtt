@@ -160,6 +160,8 @@ Ziel: funktional nah an Owlbear 2.x plus dessen beliebteste Erweiterungen. Grobe
 | Charakterbögen | Felder für Attribute, automatisch berechnete Modifikatoren, HP, RK, Inventar, Notizen; HP mit Token verknüpft; Klick auf Fertigkeit oder Angriff würfelt ins Log. |
 | Token aus Bild | Bild hochladen, rund oder eckig zuschneiden, Rahmen setzen. |
 | Asset-Bibliothek mit Tags | Karten und Tokens nach Tags filtern, raumübergreifend nutzbar. |
+| Würfelvorrat | Mehrere Würfel für einen Wurf zusammenstellen (z. B. 6d8): Antippen eines Würfels erhöht dessen Anzahl, die Anzahl lässt sich einzeln verringern, dazu ein optionaler Bonus; gewürfelt wird die daraus gebildete Formel, das Log zeigt einen Wurf mit Einzelwerten und Summe. |
+| Würfelanimation | 3D-Würfel (d4 bis d20) rollen für alle sichtbar über die Karte und enden auf dem vom Server gewürfelten Ergebnis; verdeckte GM-Würfe ohne Animation bei Spielern; pro Gerät abschaltbar, mit einfacherer Darstellung ohne zweiten WebGL-Kontext als Rückfall; oberhalb von 20 Würfeln in einem Wurf nur das Ergebnis im Log. |
 
 **Oberfläche überarbeiten**
 
