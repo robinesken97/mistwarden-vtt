@@ -19,6 +19,13 @@
 			content="black-translucent"
 		/>
 		<title>Mistwarden</title>
+		<!-- Gespeichertes Theme vor dem ersten Zeichnen setzen, sonst blitzt das falsche auf. -->
+		<script>
+			try {
+				const theme = localStorage.getItem("mistwarden.theme");
+				if (theme) document.documentElement.dataset.theme = theme;
+			} catch {}
+		</script>
 		<link rel="stylesheet" href="/src/style.css" />
 	</head>
 	<body>

@@ -1,8 +1,13 @@
 import { h } from "./dom.ts";
 import { parseRoute, startRouter } from "./router.ts";
+import { storage } from "./storage.ts";
+import { applyAccent, applyTheme } from "./theme.ts";
 import { homeView } from "./views/home.ts";
 import { joinView } from "./views/join.ts";
 import { roomView } from "./views/room.ts";
+
+applyTheme(storage.theme());
+applyAccent(storage.accent());
 
 const app = document.querySelector<HTMLElement>("#app");
 if (!app) throw new Error("#app fehlt");

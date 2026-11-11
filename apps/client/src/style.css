@@ -1,3 +1,4 @@
+/* Alle Farben stehen hier; ein Theme ist nur ein anderer Satz Werte. */
 :root {
 	color-scheme: light dark;
 	--bg: #f4f2ee;
@@ -5,23 +6,57 @@
 	--muted: #6b655e;
 	--line: #d6d1c9;
 	--accent: #5b4b8a;
+	--on-accent: #fff;
 	--ok: #2e7d4f;
 	--warn: #b5651d;
 	--bad: #b3261e;
+	/* In jedem Theme gleich: die Szene soll für alle gleich aussehen. */
+	--map-bg: #2a2830;
+	--on-map: #fff;
+	--measure-bg: #ffd23f;
+	--measure-fg: #1d1b19;
+	--shadow-color: rgb(0 0 0 / 0.35);
+	--scrim: rgb(0 0 0 / 0.35);
 	font-family: system-ui, -apple-system, sans-serif;
 	font-size: 17px;
 	background: var(--bg);
 	color: var(--fg);
 }
 
+/* „System“ (kein data-theme) folgt dem Gerät; die Werte gleichen dem Theme „dark“. */
 @media (prefers-color-scheme: dark) {
-	:root {
+	:root:not([data-theme]) {
 		--bg: #1b1a1d;
 		--fg: #ecebe8;
 		--muted: #a29d96;
 		--line: #3a383d;
 		--accent: #a99be0;
+		--on-accent: #1b1a1d;
 	}
+}
+
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--bg: #1b1a1d;
+	--fg: #ecebe8;
+	--muted: #a29d96;
+	--line: #3a383d;
+	--accent: #a99be0;
+	--on-accent: #1b1a1d;
+}
+
+:root[data-theme="oled"] {
+	color-scheme: dark;
+	--bg: #000;
+	--fg: #ecebe8;
+	--muted: #a8a39b;
+	--line: #2c2b30;
+	--accent: #a99be0;
+	--on-accent: #000;
+}
+
+:root[data-theme="light"] {
+	color-scheme: light;
 }
 
 body {
@@ -101,6 +136,16 @@ button {
 	color: inherit;
 }
 
+input[type="color"] {
+	width: 3rem;
+	height: 2.75rem;
+	padding: 0;
+	vertical-align: middle;
+	background: none;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+}
+
 input[type="text"],
 input[type="url"] {
 	flex: 1;
@@ -110,7 +155,7 @@ input[type="url"] {
 button {
 	background: var(--accent);
 	border-color: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 }
 
 button.secondary {
@@ -160,7 +205,7 @@ h2 {
 	border-radius: 4px;
 	font-size: 0.8rem;
 	background: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 	vertical-align: middle;
 }
 
@@ -200,7 +245,7 @@ main.room-mode {
 	position: fixed;
 	inset: 0;
 	overflow: hidden;
-	background: #2a2830;
+	background: var(--map-bg);
 }
 
 .stage {
@@ -224,7 +269,7 @@ main.room-mode {
 	left: 0;
 	right: 0;
 	text-align: center;
-	color: #fff;
+	color: var(--on-map);
 }
 
 .hud {
@@ -272,7 +317,7 @@ main.room-mode {
 	background: var(--bg);
 	border: 1px solid var(--line);
 	border-radius: 8px;
-	box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+	box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 .panel[hidden] {
@@ -357,7 +402,7 @@ input.num {
 	background: var(--bg);
 	border: 1px solid var(--line);
 	border-radius: 10px;
-	box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+	box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 .selection-bar[hidden] {
@@ -399,7 +444,7 @@ input.num {
 .tool-switch button.active {
 	background: var(--accent);
 	border-color: var(--accent);
-	color: #fff;
+	color: var(--on-accent);
 }
 
 /* --- Zeichnen, Messen, Würfel --- */
@@ -422,10 +467,10 @@ button.swatch {
 	left: 0;
 	padding: 0.2rem 0.5rem;
 	font-weight: 600;
-	color: #1d1b19;
-	background: #ffd23f;
+	color: var(--measure-fg);
+	background: var(--measure-bg);
 	border-radius: 6px;
-	box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+	box-shadow: 0 2px 8px var(--shadow-color);
 	pointer-events: none;
 	white-space: nowrap;
 }
@@ -449,7 +494,7 @@ button.swatch {
 	background: var(--bg);
 	border: 1px solid var(--line);
 	border-radius: 8px;
-	box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+	box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 .log-head {
@@ -522,7 +567,7 @@ button.swatch {
 	background: var(--bg);
 	border: 1px solid var(--line);
 	border-radius: 999px;
-	box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+	box-shadow: 0 4px 12px var(--shadow-color);
 	pointer-events: none;
 }
 
@@ -535,7 +580,7 @@ button.swatch {
 	justify-content: center;
 	padding: max(1rem, env(safe-area-inset-top)) 1rem
 		max(1rem, env(safe-area-inset-bottom));
-	background: rgb(0 0 0 / 0.35);
+	background: var(--scrim);
 }
 
 .card-overlay[hidden] {
@@ -551,7 +596,7 @@ button.swatch {
 	background: var(--bg);
 	border: 1px solid var(--line);
 	border-radius: 8px;
-	box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+	box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 .card-close {

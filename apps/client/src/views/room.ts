@@ -23,6 +23,14 @@ import { History, type UndoResult } from "../net/history.ts";
 import type { Stage, StageCallbacks, StageTarget } from "../render/stage.ts";
 import { navigate } from "../router.ts";
 import { storage } from "../storage.ts";
+import {
+	applyAccent,
+	applyTheme,
+	parseAccent,
+	parseTheme,
+	THEME_LABELS,
+	THEMES,
+} from "../theme.ts";
 import { createCard } from "./card.ts";
 import { createFogTools } from "./fog.ts";
 import { createHandoutTools } from "./handouts.ts";
@@ -138,6 +146,42 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				},
 				"secondary",
 			);
+	const themeSelect = h("select");
+	themeSelect.append(
+		...THEMES.map((value) =>
+			h("option", { value, textContent: THEME_LABELS[value] }),
+		),
+	);
+	themeSelect.value = storage.theme();
+	themeSelect.addEventListener("change", () => {
+		const theme = parseTheme(themeSelect.value);
+		storage.setTheme(theme);
+		applyTheme(theme);
+		if (!storage.accent()) accentInput.value = themeAccent();
+	});
+	// Ohne eigene Wahl zeigt das Feld den Akzent des aktuellen Themes.
+	const themeAccent = () =>
+		parseAccent(
+			getComputedStyle(document.documentElement)
+				.getPropertyValue("--accent")
+				.trim(),
+		) ?? "#000000";
+	const accentInput = h("input", { type: "color" });
+	accentInput.value = storage.accent() ?? themeAccent();
+	accentInput.addEventListener("input", () => {
+		const accent = parseAccent(accentInput.value);
+		storage.setAccent(accent);
+		applyAccent(accent);
+	});
+	const accentReset = button(
+		"Standard",
+		() => {
+			storage.setAccent(null);
+			applyAccent(null);
+			accentInput.value = themeAccent();
+		},
+		"secondary",
+	);
 	const panel = h(
 		"aside",
 		{ className: "panel", hidden: true },
@@ -146,6 +190,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		players,
 		gmPanel,
 		error,
+		h("label", {}, "Farbschema ", themeSelect),
+		h("p", {}, h("label", {}, "Akzentfarbe ", accentInput), " ", accentReset),
 		h("p", {}, leave),
 	);
 
