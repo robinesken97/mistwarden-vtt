@@ -165,12 +165,12 @@ Ziel: funktional nah an Owlbear 2.x plus dessen beliebteste Erweiterungen. Grobe
 
 **Oberfläche überarbeiten**
 
-Stufe 1 hat eine funktionale, aber zusammengewachsene Oberfläche. Die Überarbeitung kommt in Stufe 2 vor den neuen Werkzeugen, damit diese gleich im neuen Aufbau entstehen; Grundlage sind die Notizen aus der ersten Session.
+Stufe 1 hat eine funktionale, aber zusammengewachsene Oberfläche. Die Überarbeitung kommt in Stufe 2 vor den neuen Werkzeugen, damit diese gleich im neuen Aufbau entstehen; Grundlage ist das Design-Mockup „Mistwarden Oberfläche“ (Artboards für GM, Spieler, Laptop und Hochformat).
 
 | Feature | Akzeptanzkriterium |
 | --- | --- |
 | Gestaltungsgrundlage | Farben, Abstände, Schriftgrößen, Radien und Schatten als CSS-Variablen an einer Stelle; keine verstreuten Einzelwerte mehr in den Views. |
-| Werkzeugleiste | Kompakt, mit Symbolen und Beschriftung bzw. Tooltip; Werkzeuge nach Aufgabe gruppiert (Ansicht, Zeichnen, Fog, Würfel, Menü); kein Umbruch, der Inhalte verdeckt, auf iPad hoch- und querformat sowie am Laptop. |
+| Werkzeugleiste | Kompakt, mit Symbolen und Beschriftung bzw. Tooltip; Werkzeuge nach Aufgabe gruppiert (GM: Ansicht, Zeichnen, Fog, Tokens, Szene, Würfel; Spieler: Ansicht, Zeichnen, Würfel); kein Umbruch, der Inhalte verdeckt, auf iPad hoch- und querformat sowie am Laptop. |
 | Panels und Dialoge | Einheitliches Verhalten von Menü, Würfel-Log, Handouts, Token-Auswahl und Bestätigungen: gleiche Ränder, Schließen-Knopf an fester Stelle, nie übereinander gestapelt, keine Überlappung mit Hinweisen. |
 | Spieleransicht | Spieler sehen nur, was sie brauchen; GM-Werkzeuge und -Hinweise sind für sie nicht nur ausgegraut, sondern fehlen. |
 | Bedienbarkeit | Tippziele mindestens 44 × 44 pt; Eingabefelder mit mindestens 16 px Schrift (kein Zoom in Safari); sichtbarer Fokus; jedes Steuerelement hat einen sprechenden Namen für Screenreader. |

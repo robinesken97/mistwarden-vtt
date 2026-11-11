@@ -180,9 +180,15 @@ export function createFogTools(ctx: FogToolsContext) {
 	const brushGroup = h(
 		"span",
 		{ className: "bar-group" },
-		button("−", () => stepBrush(-1), "secondary"),
+		named(
+			button("−", () => stepBrush(-1), "secondary"),
+			t("fog.brushSmaller"),
+		),
 		brushText,
-		button("+", () => stepBrush(1), "secondary"),
+		named(
+			button("+", () => stepBrush(1), "secondary"),
+			t("fog.brushLarger"),
+		),
 	);
 	const rectHint = h("span", { className: "hint" }, t("fog.rectHint"));
 	const drawBar = h(
@@ -386,6 +392,12 @@ export function createFogTools(ctx: FogToolsContext) {
 		settingsSection,
 		destroy: () => window.removeEventListener("keydown", keydown),
 	};
+}
+
+/** Knopf, dessen sichtbarer Text nur ein Zeichen ist: sprechender Name für Screenreader. */
+function named(el: HTMLButtonElement, label: string): HTMLButtonElement {
+	el.setAttribute("aria-label", label);
+	return el;
 }
 
 function readAnimate(): boolean {
