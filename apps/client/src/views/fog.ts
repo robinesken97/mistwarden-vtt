@@ -10,8 +10,10 @@ import {
 } from "@mistwarden/protocol";
 import { button, h } from "../dom.ts";
 import { brushToPolygons, polygonToPolygons } from "../fog/shapes.ts";
+import { t } from "../i18n.ts";
 import type { SyncConnection } from "../net/connection.ts";
 import type { StageFog, StageTool, WorldPoint } from "../render/stage.ts";
+import { confirmDialog, promptDialog } from "../ui.ts";
 
 export interface FogToolsContext {
 	conn: SyncConnection;
@@ -217,10 +219,13 @@ export function createFogTools(ctx: FogToolsContext) {
 			toggleButton,
 			button(
 				"Umbenennen",
-				() => {
+				async () => {
 					const e = byId(selectedId);
 					if (!e) return;
-					const name = prompt("Name der Fog-Fläche", (e.data as FogData).name);
+					const name = await promptDialog(
+						t("fog.namePrompt"),
+						(e.data as FogData).name,
+					);
 					if (name !== null) {
 						ctx.run({
 							op: "update",
@@ -234,9 +239,13 @@ export function createFogTools(ctx: FogToolsContext) {
 			),
 			button(
 				"Löschen",
-				() => {
+				async () => {
 					const e = byId(selectedId);
-					if (!e || !confirm("Diese Fog-Fläche löschen?")) return;
+					if (
+						!e ||
+						!(await confirmDialog(t("fog.deleteConfirm"), t("common.delete")))
+					)
+						return;
 					selectedId = null;
 					ctx.run({ op: "delete", kind: "fog", id: e.id });
 					ctx.changed();

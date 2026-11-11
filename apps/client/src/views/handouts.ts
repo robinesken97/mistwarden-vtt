@@ -10,8 +10,10 @@ import type {
 } from "@mistwarden/protocol";
 import { api, assetMeta, errorText } from "../api.ts";
 import { button, h } from "../dom.ts";
+import { t } from "../i18n.ts";
 import type { SyncConnection } from "../net/connection.ts";
 import { tilesInView } from "../render/tiles.ts";
+import { confirmDialog } from "../ui.ts";
 import type { Card } from "./card.ts";
 
 export interface HandoutToolsContext {
@@ -279,8 +281,14 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 					? [
 							button(
 								"Löschen",
-								() => {
-									if (!confirm("Handout löschen?")) return;
+								async () => {
+									if (
+										!(await confirmDialog(
+											t("handout.deleteConfirm"),
+											t("common.delete"),
+										))
+									)
+										return;
 									ctx.run({ op: "delete", kind: "handout", id: handoutId });
 									ctx.card.hide();
 								},

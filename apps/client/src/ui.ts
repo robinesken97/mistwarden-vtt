@@ -84,3 +84,26 @@ export function promptDialog(
 	const input = h("input", { type: "text", value: initial });
 	return ask([h("label", {}, label, input)], t("dialog.ok"), () => input.value);
 }
+
+/** Wie lange eine Meldung stehen bleibt. */
+const TOAST_MS = 6000;
+
+/** Kurze Meldung oben in der Mitte; verschwindet von selbst, null blendet sofort aus. */
+export function createToast(kind: "error" | "info") {
+	const el = h("div", { className: `toast ${kind}`, hidden: true });
+	el.setAttribute("role", kind === "error" ? "alert" : "status");
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	return {
+		el,
+		show(message: string | null): void {
+			clearTimeout(timer);
+			el.textContent = message ?? "";
+			el.hidden = !message;
+			if (message) {
+				timer = setTimeout(() => {
+					el.hidden = true;
+				}, TOAST_MS);
+			}
+		},
+	};
+}

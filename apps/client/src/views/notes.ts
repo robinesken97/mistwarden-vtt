@@ -2,8 +2,10 @@
 // alle können freigegebene Notizen antippen und lesen.
 import type { Action, Entity, NoteData } from "@mistwarden/protocol";
 import { button, h } from "../dom.ts";
+import { t } from "../i18n.ts";
 import type { SyncConnection } from "../net/connection.ts";
 import type { StageNote, WorldPoint } from "../render/stage.ts";
+import { confirmDialog } from "../ui.ts";
 import type { Card } from "./card.ts";
 
 export interface NoteToolsContext {
@@ -103,8 +105,14 @@ export function createNoteTools(ctx: NoteToolsContext) {
 				}),
 				button(
 					"Löschen",
-					() => {
-						if (!confirm("Notiz löschen?")) return;
+					async () => {
+						if (
+							!(await confirmDialog(
+								t("note.deleteConfirm"),
+								t("common.delete"),
+							))
+						)
+							return;
 						ctx.run({ op: "delete", kind: "note", id });
 						select(null);
 					},

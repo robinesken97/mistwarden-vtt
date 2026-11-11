@@ -13,7 +13,7 @@ import {
 	type SceneData,
 } from "@mistwarden/protocol";
 import { ApiError, api, assetMeta, errorText, playerLink } from "../api.ts";
-import { button, errorLine, h } from "../dom.ts";
+import { button, h } from "../dom.ts";
 import { LANG_NAMES, LANGS, parseLang, t } from "../i18n.ts";
 import {
 	ActionRejected,
@@ -31,7 +31,13 @@ import {
 	parseTheme,
 	THEMES,
 } from "../theme.ts";
-import { confirmDialog, createPanels, panelHead, promptDialog } from "../ui.ts";
+import {
+	confirmDialog,
+	createPanels,
+	createToast,
+	panelHead,
+	promptDialog,
+} from "../ui.ts";
 import { createCard } from "./card.ts";
 import { createFogTools } from "./fog.ts";
 import { createHandoutTools } from "./handouts.ts";
@@ -123,7 +129,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		h("span", { className: "hud-slot" }),
 		menuButton,
 	);
-	const error = errorLine();
+	// Fehler erscheinen als Meldung über der Karte, auch wenn kein Panel offen ist.
+	const error = createToast("error");
 	const stageMessage = h("p", { className: "stage-message", hidden: true });
 
 	const roleText = h("p", { className: "hint" });
@@ -193,6 +200,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		},
 		"secondary",
 	);
+	const themeRow = h("label", {}, `${t("settings.theme")} `, themeSelect);
 	const panel = h(
 		"aside",
 		{ className: "panel", hidden: true },
@@ -201,8 +209,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		h("h2", {}, "Spieler"),
 		players,
 		gmPanel,
-		error,
-		h("label", {}, `${t("settings.theme")} `, themeSelect),
+		themeRow,
 		h(
 			"p",
 			{},
@@ -371,10 +378,10 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		table.measureBar,
 		table.measureLabel,
 		table.logPanel,
-		table.toast,
+		h("div", { className: "toasts" }, error.el, table.toast),
 		card.el,
 	);
-	panel.insertBefore(fog.settingsSection, error);
+	panel.insertBefore(fog.settingsSection, themeRow);
 
 	/** Antippen wählt genau ein Objekt aus – Token oder Fog-Fläche. */
 	const selectTarget = (target: StageTarget | null) => {
