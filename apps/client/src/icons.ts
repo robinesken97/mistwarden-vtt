@@ -15,6 +15,8 @@ export const ICONS = {
 	check: ["M5 12l5 5 9-10"],
 	rotateLeft: ["M5.5 13a6.5 6.5 0 102-5.6", "M4 4v4.5h4.5"],
 	rotateRight: ["M18.5 13a6.5 6.5 0 11-2-5.6", "M20 4v4.5h-4.5"],
+	list: ["M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1"],
+	note: ["M5 4h14v11l-5 5H5zM14 20v-5h5"],
 	log: ["M4 5h16v11H9l-5 4z"],
 	tokens: [
 		"M4 12a8 8 0 1016 0 8 8 0 10-16 0",

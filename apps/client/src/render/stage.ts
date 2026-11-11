@@ -103,6 +103,8 @@ export interface StageCallbacks {
 	ping(world: WorldPoint): void;
 	/** Messung geändert oder beendet (null). */
 	measure(result: StageMeasurement | null): void;
+	/** Ausschnitt verschoben oder gezoomt: Menüs an Objekten rücken nach. */
+	viewChanged(): void;
 }
 
 export interface StageScene {
@@ -132,6 +134,8 @@ export interface Stage {
 	cancelDrawing(): void;
 	/** Nebel animieren (kostet Rechenzeit, deshalb abschaltbar). */
 	setAnimateFog(on: boolean): void;
+	/** Weltkoordinaten in Bildschirmkoordinaten (relativ zur Spielfläche). */
+	worldToScreen(x: number, y: number): { x: number; y: number };
 	/** Mitte des sichtbaren Bereichs in Weltkoordinaten. */
 	viewCenter(): { x: number; y: number };
 	/** Infos für Fehlersuche und Tests (Texturgröße, Budget, Speicher). */
@@ -544,9 +548,15 @@ export async function createStage(
 		};
 	}
 
+	let lastView = "";
 	function draw(): void {
 		world.scale.set(camera.zoom);
 		world.position.set(-camera.x * camera.zoom, -camera.y * camera.zoom);
+		const viewKey = `${camera.x},${camera.y},${camera.zoom}`;
+		if (viewKey !== lastView) {
+			lastView = viewKey;
+			callbacks.viewChanged();
+		}
 		const { width, height } = viewSize();
 		const view = camera.view(width, height);
 
@@ -795,6 +805,10 @@ export async function createStage(
 			animateFog = on;
 			requestRender();
 		},
+		worldToScreen: (x, y) => ({
+			x: (x - camera.x) * camera.zoom,
+			y: (y - camera.y) * camera.zoom,
+		}),
 		viewCenter() {
 			const { width, height } = viewSize();
 			return camera.screenToWorld(width / 2, height / 2);

@@ -17,6 +17,14 @@ import { ICONS } from "../icons.ts";
 import type { SyncConnection } from "../net/connection.ts";
 import type { StageToken, WorldPoint } from "../render/stage.ts";
 import { confirmDialog, promptDialog } from "../ui.ts";
+import {
+	menu,
+	menuDivider,
+	menuItem,
+	menuRow,
+	menuSelect,
+	menuSwitch,
+} from "./menu.ts";
 
 export interface TokenToolsContext {
 	conn: SyncConnection;
@@ -233,100 +241,69 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		if (selectedId)
 			update(selectedId, { ownerId: ownerSelect.value || null }, false);
 	});
-	const layerButton = button(
-		"",
-		() => {
-			const e = byId(selectedId);
-			if (!e) return;
-			const layer = tokenData(e).layer === "props" ? "tokens" : "props";
-			update(e.id, { layer }, false);
-		},
-		"secondary",
-	);
+	const toggleLayer = () => {
+		const e = byId(selectedId);
+		if (!e) return;
+		const layer = tokenData(e).layer === "props" ? "tokens" : "props";
+		update(e.id, { layer }, false);
+	};
 	// Versteckt: Spieler bekommen das Token gar nicht erst übertragen.
-	const hideButton = button(
-		"",
-		() => {
-			const e = byId(selectedId);
-			if (e) update(e.id, { hidden: !tokenData(e).hidden }, false);
-		},
-		"secondary",
-	);
-	const gmFields = h(
-		"div",
-		{ className: "bar-row" },
-		h("label", {}, "Größe ", sizeSelect),
-		h("label", {}, "Besitzer ", ownerSelect),
-	);
-	const gmControls = h(
-		"div",
-		{ className: "bar-row" },
-		layerButton,
-		hideButton,
-		button(
-			"Umbenennen",
-			async () => {
-				const e = byId(selectedId);
-				if (!e) return;
-				const name = await promptDialog(
-					t("token.namePrompt"),
-					tokenData(e).name,
-				);
-				if (name !== null)
-					update(e.id, { name: name.trim().slice(0, 40) }, false);
-			},
-			"secondary",
-		),
-		button(
-			"Löschen",
-			async () => {
-				const e = byId(selectedId);
-				if (
-					!e ||
-					!(await confirmDialog(
-						t("token.deleteConfirm", { name: tokenData(e).name || "Token" }),
-						t("common.delete"),
-					))
-				)
-					return;
-				selectedId = null;
-				ctx.run({ op: "delete", kind: "token", id: e.id });
-				ctx.changed();
-			},
-			"secondary",
-		),
-	);
-	const closeButton = iconButton(
-		ICONS.close,
-		t("panel.close"),
-		() => select(null),
-		false,
-	);
-	const bar = h(
-		"div",
-		{ className: "selection-bar rows", hidden: true },
-		h(
-			"div",
-			{ className: "bar-row" },
-			barName,
-			...[-45, -15, 15, 45].map((deg) => {
-				// Symbol in Symbolgröße statt Textzeichen; der Name nennt die Richtung.
-				const b = iconButton(
-					deg < 0 ? ICONS.rotateLeft : ICONS.rotateRight,
-					`${Math.abs(deg)}°`,
-					() => rotate(deg),
-				);
-				b.classList.add("filled");
-				b.setAttribute(
-					"aria-label",
-					`${Math.abs(deg)}° nach ${deg < 0 ? "links" : "rechts"} drehen`,
-				);
-				return b;
-			}),
-			closeButton,
-		),
-		...(isGm ? [gmFields, gmControls] : []),
-	);
+	const toggleHidden = () => {
+		const e = byId(selectedId);
+		if (e) update(e.id, { hidden: !tokenData(e).hidden }, false);
+	};
+	const rename = async () => {
+		const e = byId(selectedId);
+		if (!e) return;
+		const name = await promptDialog(t("token.namePrompt"), tokenData(e).name);
+		if (name !== null) update(e.id, { name: name.trim().slice(0, 40) }, false);
+	};
+	const remove = async () => {
+		const e = byId(selectedId);
+		if (
+			!e ||
+			!(await confirmDialog(
+				t("token.deleteConfirm", { name: tokenData(e).name || "Token" }),
+				t("common.delete"),
+			))
+		)
+			return;
+		selectedId = null;
+		ctx.run({ op: "delete", kind: "token", id: e.id });
+		ctx.changed();
+	};
+	const hiddenSwitch = menuSwitch("Verstecken", toggleHidden);
+	const propSwitch = menuSwitch("Prop (unter Tokens)", toggleLayer);
+	/** Zeile „Drehen“: links und rechts herum um `deg` Grad. */
+	const rotateRow = (deg: number) =>
+		menuRow(
+			`Drehen ${deg}°`,
+			...[-deg, deg].map((d) =>
+				iconButton(
+					d < 0 ? ICONS.rotateLeft : ICONS.rotateRight,
+					`${deg}° nach ${d < 0 ? "links" : "rechts"} drehen`,
+					() => rotate(d),
+					false,
+				),
+			),
+		);
+	// Menü am Token, Aufbau wie im Entwurf „Laptop“.
+	const bar = menu(barName, () => select(null), [
+		rotateRow(15),
+		rotateRow(45),
+		...(isGm
+			? [
+					menuSelect("Größe", sizeSelect),
+					menuSelect("Besitzer", ownerSelect),
+					menuDivider(),
+					hiddenSwitch.el,
+					propSwitch.el,
+					menuDivider(),
+					menuItem("Umbenennen", () => void rename()),
+					menuItem("Löschen", () => void remove(), true),
+				]
+			: []),
+	]);
 
 	// --- GM: Tokens anlegen ---
 	const layerSelect = h("select");
@@ -438,7 +415,7 @@ export function createTokenTools(ctx: TokenToolsContext) {
 			(p) => p.kind === "player",
 		);
 		ownerSelect.replaceChildren(
-			h("option", { value: "", textContent: "niemand (GM)" }),
+			h("option", { value: "", textContent: "nur GM" }),
 			...players.map((p) =>
 				h("option", {
 					value: p.id,
@@ -447,9 +424,8 @@ export function createTokenTools(ctx: TokenToolsContext) {
 				}),
 			),
 		);
-		hideButton.textContent = t.hidden ? "Für Spieler zeigen" : "Verstecken";
-		layerButton.textContent =
-			t.layer === "props" ? "Zu Token machen" : "Zu Prop machen";
+		hiddenSwitch.set(t.hidden);
+		propSwitch.set(t.layer === "props");
 	}
 
 	return {
@@ -460,6 +436,20 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		render,
 		snapButton,
 		snapping: () => snapping,
+		/** Gewähltes Token in Weltkoordinaten (für die Lage des Menüs). */
+		selectedBox() {
+			const e = byId(selectedId);
+			const grid = ctx.currentGrid();
+			if (!e || !grid) return null;
+			const d = tokenData(e);
+			const half = (grid.size * d.size) / 2;
+			return {
+				left: d.x - half,
+				top: d.y - half,
+				right: d.x + half,
+				bottom: d.y + half,
+			};
+		},
 		bar,
 		gmSection,
 	};
