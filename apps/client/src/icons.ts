@@ -1,8 +1,8 @@
 // Strichsymbole im 24er-Raster, selbst gezeichnet. Jeder Eintrag ist eine Liste von Pfaden.
 export const ICONS = {
 	select: ["M5 3l14 8-6 2-2 6z"],
-	fogPolygon: ["M12 3l8 6-3 11H7L4 9z"],
-	fogBrush: ["M20 4L9 15M9 15c-3 0-3 3-6 4 3 1 8 1 8-2z"],
+	// Beide Fog-Werkzeuge tragen die Wolke; die Beschriftung sagt, wie gezeichnet wird.
+	fog: ["M7 18a4 4 0 010-8 5 5 0 019.6-1.5A4.8 4.8 0 0117 18z"],
 	measure: ["M3 17L17 3l4 4L7 21zM8 12l2 2M11 9l2 2M14 6l2 2"],
 	draw: ["M4 20l4-1L19 8l-3-3L5 16z"],
 	dice: ["M5 5h14v14H5z", "M9 9v.01M15 15v.01M12 12v.01"],

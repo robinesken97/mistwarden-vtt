@@ -154,10 +154,12 @@ export function createFogTools(ctx: FogToolsContext) {
 	const toolSwitch = h("span", { className: "tool-switch" });
 	for (const [name, key, paths] of [
 		["select", "tool.select", ICONS.select],
-		["polygon", "tool.fogPolygon", ICONS.fogPolygon],
-		["brush", "tool.fogBrush", ICONS.fogBrush],
+		["polygon", "tool.fogPolygon", ICONS.fog],
+		["brush", "tool.fogBrush", ICONS.fog],
 	] as const) {
 		const b = iconButton(paths, t(key), () => setTool(name));
+		// Die Fog-Werkzeuge stehen in der Leiste auf einer gemeinsamen Fläche.
+		if (name !== "select") b.classList.add("fog-tool");
 		toolButtons.set(name, b);
 		toolSwitch.append(b);
 	}

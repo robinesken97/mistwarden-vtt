@@ -275,9 +275,7 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 			error,
 			h(
 				"div",
-				{ className: "row" },
-				button("Zeigen", () => void save(true)),
-				button("Speichern", () => void save(false), "secondary"),
+				{ className: "row card-actions" },
 				...(e
 					? [
 							button(
@@ -293,10 +291,12 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 									ctx.run({ op: "delete", kind: "handout", id: handoutId });
 									ctx.card.hide();
 								},
-								"secondary",
+								"danger",
 							),
 						]
 					: []),
+				button("Speichern", () => void save(false), "secondary"),
+				button("Zeigen", () => void save(true)),
 			),
 		);
 		title.focus();

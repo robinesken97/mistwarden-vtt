@@ -1086,39 +1086,80 @@ button.swatch::before {
 	display: none;
 }
 
+/* Karte wie ein Dialog: Kopf mit Titel und ✕, Felder im gleichen Abstand, Fußzeile mit Aktionen. */
 .card {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	width: min(36rem, 100%);
 	max-height: 100%;
-	padding: 4px 16px 16px;
 	background: var(--surface);
 	border: 1px solid var(--line);
 	border-radius: var(--radius-panel);
 	box-shadow: 0 8px 24px var(--shadow-color);
 }
 
+/* ✕ sitzt in der Titelzeile; der Titel (immer das erste Element) lässt rechts Platz dafür. */
 .card-close {
-	display: flex;
-	justify-content: flex-end;
-	margin-right: -12px;
+	position: absolute;
+	top: 4px;
+	right: 4px;
 }
 
 .card-body {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 12px;
+	padding: 0 16px 16px;
 	overflow-y: auto;
 	-webkit-overflow-scrolling: touch;
 }
 
-.card-body h2 {
-	margin: 0;
+.card-body > h2:first-child {
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	min-height: 53px;
+	margin: 0 -16px 4px;
+	padding: 4px 52px 4px 16px;
 	font-size: 16px;
+	overflow-wrap: anywhere;
+	border-bottom: 1px solid var(--line);
 }
 
 .card-body .row {
 	margin: 0;
+}
+
+/* Beschriftung über dem Feld, Feld über die ganze Breite. */
+.card-body label:has(> select) {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	color: var(--muted);
+	font-size: 13px;
+}
+
+.card-body label > select {
+	width: 100%;
+	color: var(--fg);
+}
+
+/* Fußzeile: Aktionen rechts, die wichtigste ganz außen; Löschen steht getrennt links. */
+.card-body .card-actions {
+	justify-content: flex-end;
+	margin: 4px -16px -16px;
+	padding: 8px;
+	border-top: 1px solid var(--line);
+}
+
+.card-actions .danger {
+	margin-right: auto;
+}
+
+/* Einzelner Knopf unter dem Inhalt (z. B. „Bearbeiten“): rechts wie die Fußzeile, nicht über die Breite. */
+.card-body > button {
+	align-self: flex-end;
 }
 
 .card-text {
@@ -1151,7 +1192,7 @@ button.swatch::before {
 .handout-picks {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0 16px;
+	gap: 8px;
 }
 
 .handout-picks[hidden] {
@@ -1539,6 +1580,17 @@ button.icon-button.active {
 	max-width: 100%;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+/* Fog-Werkzeuge: eine gemeinsame Fläche, damit sie als Gruppe lesbar sind. */
+.toolbar .fog-tool {
+	background: var(--surface-2);
+	border-radius: 12px 0 0 12px;
+}
+
+.toolbar .fog-tool + .fog-tool {
+	margin-left: -2px;
+	border-radius: 0 12px 12px 0;
 }
 
 /* Schalter in der Leiste (Einrasten): an = Symbol in Akzentfarbe, aus = blass. */

@@ -89,20 +89,7 @@ export function createNoteTools(ctx: NoteToolsContext) {
 			h("label", {}, visible, "Für Spieler sichtbar"),
 			h(
 				"div",
-				{ className: "row" },
-				button("Speichern", () => {
-					ctx.run({
-						op: "update",
-						kind: "note",
-						id,
-						patch: {
-							title: title.value.trim().slice(0, 60),
-							text: text.value.slice(0, 4000),
-							hidden: !visible.checked,
-						},
-					});
-					select(null);
-				}),
+				{ className: "row card-actions" },
 				button(
 					"Löschen",
 					async () => {
@@ -116,8 +103,21 @@ export function createNoteTools(ctx: NoteToolsContext) {
 						ctx.run({ op: "delete", kind: "note", id });
 						select(null);
 					},
-					"secondary",
+					"danger",
 				),
+				button("Speichern", () => {
+					ctx.run({
+						op: "update",
+						kind: "note",
+						id,
+						patch: {
+							title: title.value.trim().slice(0, 60),
+							text: text.value.slice(0, 4000),
+							hidden: !visible.checked,
+						},
+					});
+					select(null);
+				}),
 			),
 		);
 		title.focus();

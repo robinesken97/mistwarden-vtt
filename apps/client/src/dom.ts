@@ -13,11 +13,16 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 export function button(
 	label: string,
 	onClick: () => void,
-	variant: "primary" | "secondary" = "primary",
+	variant: "primary" | "secondary" | "danger" = "primary",
 ): HTMLButtonElement {
 	const el = h("button", {
 		type: "button",
-		className: variant === "secondary" ? "secondary" : "",
+		// „danger“ sieht aus wie „secondary“, steht in Fußzeilen aber links, getrennt von den übrigen.
+		className: {
+			primary: "",
+			secondary: "secondary",
+			danger: "secondary danger",
+		}[variant],
 		textContent: label,
 	});
 	el.addEventListener("click", onClick);
