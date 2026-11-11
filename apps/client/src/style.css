@@ -541,8 +541,9 @@ main.room-mode {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin: 0 -12px;
-	padding: 4px 4px 4px 16px;
+	/* Titel bündig mit dem Inhalt (12 px), das ✕-Symbol bündig mit dessen rechter Kante. */
+	margin: 0 -12px 12px;
+	padding: 4px 1px 4px 12px;
 	background: var(--surface);
 	border-bottom: 1px solid var(--line);
 }
@@ -556,6 +557,27 @@ main.room-mode {
 	font-weight: 600;
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
+}
+
+/* Direkt unter dem Kopf beginnt der Inhalt ohne zusätzlichen Abstand. */
+.panel-head + h2,
+.panel-head + h3,
+.panel-head + p,
+.panel-head + div > h2:first-child {
+	margin-top: 0;
+}
+
+.log-panel .panel-head {
+	margin-bottom: 0;
+}
+
+/* Schließen: 44-px-Tippziel bleibt, das ✕ selbst rückt an die rechte Inhaltskante
+   (der Strich beginnt 5,5 px innerhalb des 22-px-Symbols). */
+.panel .panel-head > button,
+.card .card-close > button,
+.menu .menu-head > button {
+	justify-content: flex-end;
+	padding: 0 5px 0 0;
 }
 
 .panel .panel-head h2 {
