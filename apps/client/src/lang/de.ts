@@ -100,4 +100,5 @@ export const de = {
 	"dice.roll": "Würfeln",
 	"dice.hidden": "Verdeckt würfeln (nur du siehst den Wurf)",
 	"dice.less": "Einen {die} weniger",
+	"scenes.title": "Szenen",
 } as const;

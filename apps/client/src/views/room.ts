@@ -13,7 +13,7 @@ import {
 	type SceneData,
 } from "@mistwarden/protocol";
 import { ApiError, api, assetMeta, errorText, playerLink } from "../api.ts";
-import { button, h, iconButton } from "../dom.ts";
+import { button, h, icon, iconButton } from "../dom.ts";
 import { t } from "../i18n.ts";
 import { ICONS } from "../icons.ts";
 import {
@@ -109,8 +109,18 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	);
 	const panels = createPanels(() => {
 		menuButton.classList.toggle("active", !panel.hidden);
+		sceneButton.classList.toggle("active", !scenePanel.hidden);
 		table.render();
 	});
+	// GM: Der Szenenname in der Kopfzeile öffnet das Szenen-Panel (Liste, Karte, Grid).
+	const scenePanel = h(
+		"aside",
+		{ className: "panel", hidden: true },
+		panelHead(t("scenes.title"), () => panels.close()),
+	);
+	const sceneButton = button("", () => panels.toggle(scenePanel), "secondary");
+	sceneButton.classList.add("hud-scene-button");
+	sceneButton.append(sceneText, icon(ICONS.chevron));
 	const menuButton = iconButton(ICONS.menu, t("menu.title"), () =>
 		panels.toggle(panel),
 	);
@@ -119,8 +129,9 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		{ className: "hud" },
 		title,
 		h("span", {}, statusDot, statusText),
-		sceneText,
+		isGm ? sceneButton : sceneText,
 		backToActive,
+		h("span", { className: "hud-space" }),
 		h("span", { className: "hud-slot" }),
 		menuButton,
 	);
@@ -162,9 +173,18 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	);
 
 	panels.add(panel);
+	panels.add(scenePanel);
 	root.classList.add("room-mode");
 	root.replaceChildren(
-		h("div", { className: "room" }, stageHost, stageMessage, hud, panel),
+		h(
+			"div",
+			{ className: "room" },
+			stageHost,
+			stageMessage,
+			hud,
+			panel,
+			scenePanel,
+		),
 	);
 	const roomEl = root.firstElementChild as HTMLElement;
 	// Die HUD bricht auf schmalen Geräten (iPad hochkant) um; Panels sitzen darunter.
@@ -693,8 +713,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 	const settingsTitle = h("h2");
 	if (isGm && gmToken) {
-		gmPanel.append(
-			h("h2", {}, "Szenen"),
+		scenePanel.append(
 			scenes,
 			sceneForm,
 			settingsTitle,
@@ -719,6 +738,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				"Größe und Versatz in Kartenpixeln. Die Karte bleibt fest, das Grid wird an sie angepasst.",
 			),
 			table.gmMeasureSection,
+		);
+		gmPanel.append(
 			tokens.gmSection,
 			fog.gmSection,
 			notes.gmSection,

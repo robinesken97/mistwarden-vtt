@@ -332,8 +332,18 @@ main.room-mode {
 	font-size: 1.05rem;
 }
 
-.hud-scene {
+.hud-space {
 	flex: 1;
+}
+
+.hud-scene-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	min-width: 0;
+}
+
+.hud-scene {
 	min-width: 4rem;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -1160,6 +1170,11 @@ button.icon-button {
 	border-color: transparent;
 }
 
+/* `hidden` muss gegen display: inline-flex gewinnen (z. B. Handouts ohne Inhalt bei Spielern). */
+button.icon-button[hidden] {
+	display: none;
+}
+
 button.icon-button.active {
 	background: var(--accent);
 	color: var(--on-accent);
@@ -1185,4 +1200,10 @@ button.icon-button.active {
 		clip-path: inset(50%);
 		white-space: nowrap;
 	}
+}
+
+.hud-scene-button .icon {
+	flex: none;
+	width: 1rem;
+	height: 1rem;
 }
