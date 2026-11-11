@@ -99,4 +99,5 @@ export const en: Record<keyof typeof de, string> = {
 	"dice.roll": "Roll",
 	"dice.hidden": "Roll hidden (only you see the roll)",
 	"dice.less": "One {die} fewer",
+	"scenes.title": "Scenes",
 };
