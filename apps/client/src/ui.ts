@@ -22,6 +22,8 @@ export function createPanels(onChange: () => void = () => {}) {
 		},
 		toggle: (panel: Hideable) => show(panel.hidden ? panel : null),
 		close: () => show(null),
+		/** Ob gerade ein Panel offen ist (die Werkzeugleiste weicht dann aus). */
+		isOpen: () => [...panels].some((p) => !p.hidden),
 	};
 }
 

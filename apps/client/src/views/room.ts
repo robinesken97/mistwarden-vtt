@@ -110,6 +110,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const panels = createPanels(() => {
 		menuButton.classList.toggle("active", !panel.hidden);
 		sceneButton.classList.toggle("active", !scenePanel.hidden);
+		roomEl.classList.toggle("panel-open", panels.isOpen());
 		table.render();
 	});
 	// GM: Der Szenenname in der Kopfzeile öffnet das Szenen-Panel (Liste, Karte, Grid).
@@ -824,7 +825,11 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	function render(): void {
 		if (disposed) return;
 		statusDot.dataset.status = conn.status;
-		statusText.textContent = statusLabel[conn.status];
+		const playerCount = entitiesOf("player").length;
+		statusText.textContent =
+			isGm && conn.status === "online"
+				? `${statusLabel.online} · ${t("status.players", { count: playerCount })}`
+				: statusLabel[conn.status];
 		title.textContent = conn.roomName ?? "Mistwarden";
 		document.title = conn.roomName
 			? `${conn.roomName} – Mistwarden`

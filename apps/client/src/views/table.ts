@@ -438,12 +438,16 @@ export function createTableTools(ctx: TableToolsContext) {
 		{ className: "panel log-panel", hidden: true },
 		panelHead(t("dice.title"), () => ctx.togglePanel(logPanel)),
 		logList,
-		quick,
-		rollForm,
-		...(ctx.isGm
-			? [h("label", { className: "hint" }, hiddenBox, ` ${t("dice.hidden")}`)]
-			: []),
-		rollError,
+		h(
+			"div",
+			{ className: "roll-controls" },
+			quick,
+			rollForm,
+			...(ctx.isGm
+				? [h("label", { className: "hint" }, hiddenBox, ` ${t("dice.hidden")}`)]
+				: []),
+			rollError,
+		),
 	);
 	const toast = h("div", { className: "toast", hidden: true });
 
@@ -459,27 +463,31 @@ export function createTableTools(ctx: TableToolsContext) {
 
 	function rollLine(e: Entity): HTMLLIElement {
 		const r = e.data as RollData;
-		const time = new Date(r.at).toLocaleTimeString("de-DE", {
-			hour: "2-digit",
-			minute: "2-digit",
-		});
+		const time = new Date(r.at).toLocaleTimeString(
+			document.documentElement.lang,
+			{ hour: "2-digit", minute: "2-digit" },
+		);
+		// Aufbau wie im Entwurf: oben Name und Zeit, darunter Formel, Einzelwürfe, Summe rechts.
 		return h(
 			"li",
-			{ className: r.hidden ? "roll hidden-roll" : "roll" },
+			{ className: "roll" },
 			h(
-				"div",
-				{ className: "roll-head" },
-				h("strong", {}, playerName(r.authorId)),
-				h("span", { className: "hint" }, ` ${time}`),
-				...(r.hidden ? [h("span", { className: "badge" }, "verdeckt")] : []),
+				"span",
+				{ className: "roll-meta" },
+				`${playerName(r.authorId)} · ${time}`,
+				...(r.hidden
+					? [" ", h("span", { className: "badge" }, t("dice.hiddenBadge"))]
+					: []),
 			),
 			h(
-				"div",
-				{},
+				"span",
+				{ className: "roll-row" },
 				h("span", { className: "roll-formula" }, r.formula),
-				" ",
-				...r.terms.flatMap((t, i) => termNodes(t, i)),
-				" = ",
+				h(
+					"span",
+					{ className: "roll-detail" },
+					...r.terms.flatMap((term, index) => termNodes(term, index)),
+				),
 				h("strong", { className: "roll-total" }, String(r.total)),
 			),
 		);
