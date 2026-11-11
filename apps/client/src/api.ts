@@ -8,6 +8,7 @@ import {
 	type RoomSummary,
 	type SessionResponse,
 } from "@mistwarden/protocol";
+import { t } from "./i18n.ts";
 
 export class ApiError extends Error {
 	readonly status: number;
@@ -145,30 +146,23 @@ export const api = {
 		call<JoinResponse>("/api/join", { body: { linkToken, displayName } }),
 };
 
+const ERROR_KEYS = {
+	unauthorized: "error.unauthorized",
+	too_many_requests: "error.too_many_requests",
+	not_found: "error.not_found",
+	room_full: "error.room_full",
+	network: "error.network",
+	bad_request: "error.bad_request",
+	unsupported: "error.unsupported",
+	too_large: "error.too_large",
+	invalid_import: "error.invalid_import",
+} as const;
+
 export function errorText(err: unknown): string {
 	if (!(err instanceof ApiError)) return String(err);
-	switch (err.code) {
-		case "unauthorized":
-			return "Anmeldung fehlgeschlagen.";
-		case "too_many_requests":
-			return "Zu viele Versuche. Bitte eine Minute warten.";
-		case "not_found":
-			return "Nicht gefunden – ist der Link noch gültig?";
-		case "room_full":
-			return "Der Raum ist voll.";
-		case "network":
-			return "Server nicht erreichbar.";
-		case "bad_request":
-			return "Eingabe ungültig.";
-		case "unsupported":
-			return "Dateiformat nicht unterstützt (PNG, JPEG oder WebP).";
-		case "too_large":
-			return "Datei oder Bild zu groß.";
-		case "invalid_import":
-			return "Die Datei ist kein gültiger Mistwarden-Raum.";
-		default:
-			return "Unerwarteter Fehler.";
-	}
+	return t(
+		ERROR_KEYS[err.code as keyof typeof ERROR_KEYS] ?? "error.unexpected",
+	);
 }
 
 /** Vollständiger Spieler-Link; der Token steht hinter #, damit er in keinem Server-Log landet. */

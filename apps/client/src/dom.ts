@@ -40,3 +40,19 @@ export function errorLine(): HTMLParagraphElement & {
 	};
 	return el;
 }
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** Dekoratives Strichsymbol aus Pfaddaten; die Farbe folgt der Textfarbe. */
+export function icon(paths: string[], size = 24): SVGSVGElement {
+	const svg = document.createElementNS(SVG_NS, "svg");
+	svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+	svg.setAttribute("aria-hidden", "true");
+	svg.classList.add("icon");
+	for (const d of paths) {
+		const path = document.createElementNS(SVG_NS, "path");
+		path.setAttribute("d", d);
+		svg.append(path);
+	}
+	return svg;
+}
