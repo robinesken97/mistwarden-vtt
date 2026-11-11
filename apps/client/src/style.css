@@ -246,7 +246,10 @@ button.secondary {
 select {
 	appearance: none;
 	-webkit-appearance: none;
-	padding-right: 36px;
+	/* Text mittig: links so viel Abstand wie rechts für den Pfeil. */
+	padding: 0 36px;
+	text-align: center;
+	text-align-last: center;
 	text-overflow: ellipsis;
 	background-image:
 		linear-gradient(45deg, transparent 50%, var(--muted) 50%),
@@ -772,6 +775,11 @@ input.num {
 .selection-bar button {
 	min-width: 44px;
 	min-height: 48px;
+}
+
+/* Symbolknopf mit Fläche (Drehen): Symbol in voller Größe neben dem Wert. */
+.selection-bar .icon-button.filled {
+	background: var(--surface-2);
 }
 
 /* Entweder-oder-Auswahl: Knöpfe in einer gemeinsamen Fläche, der gewählte in Akzentfarbe. */

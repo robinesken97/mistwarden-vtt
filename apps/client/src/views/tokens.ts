@@ -309,10 +309,20 @@ export function createTokenTools(ctx: TokenToolsContext) {
 			"div",
 			{ className: "bar-row" },
 			barName,
-			button("⟲ 45°", () => rotate(-45), "secondary"),
-			button("⟲ 15°", () => rotate(-15), "secondary"),
-			button("⟳ 15°", () => rotate(15), "secondary"),
-			button("⟳ 45°", () => rotate(45), "secondary"),
+			...[-45, -15, 15, 45].map((deg) => {
+				// Symbol in Symbolgröße statt Textzeichen; der Name nennt die Richtung.
+				const b = iconButton(
+					deg < 0 ? ICONS.rotateLeft : ICONS.rotateRight,
+					`${Math.abs(deg)}°`,
+					() => rotate(deg),
+				);
+				b.classList.add("filled");
+				b.setAttribute(
+					"aria-label",
+					`${Math.abs(deg)}° nach ${deg < 0 ? "links" : "rechts"} drehen`,
+				);
+				return b;
+			}),
 			closeButton,
 		),
 		...(isGm ? [gmFields, gmControls] : []),
