@@ -1,8 +1,11 @@
 import type { RoomSummary } from "@mistwarden/protocol";
 import { ApiError, api, errorText } from "../api.ts";
 import { button, errorLine, h } from "../dom.ts";
+import { t } from "../i18n.ts";
 import { navigate } from "../router.ts";
 import { storage } from "../storage.ts";
+import { deviceSettings } from "./device.ts";
+import { brand, ornament, startPage } from "./start.ts";
 
 /** Startseite: Raumliste der GM, sonst der letzte Raum als Spieler, sonst Login. */
 export function homeView(root: HTMLElement): void {
@@ -27,7 +30,7 @@ export function homeView(root: HTMLElement): void {
 function joinByLink(): HTMLElement {
 	const link = h("input", {
 		type: "url",
-		placeholder: "Spieler-Link einfügen",
+		placeholder: t("start.linkPlaceholder"),
 		autocomplete: "off",
 	});
 	const error = errorLine();
@@ -35,7 +38,7 @@ function joinByLink(): HTMLElement {
 		"form",
 		{},
 		link,
-		h("button", { type: "submit" }, "Beitreten"),
+		h("button", { type: "submit" }, t("start.join")),
 	);
 	form.addEventListener("submit", (e) => {
 		e.preventDefault();
@@ -44,21 +47,32 @@ function joinByLink(): HTMLElement {
 			? value.slice(value.indexOf("#") + 1)
 			: value;
 		if (!/^[A-Za-z0-9_-]{16,200}$/.test(hash)) {
-			error.show("Das sieht nicht wie ein Spieler-Link aus.");
+			error.show(t("start.badLink"));
 			return;
 		}
 		navigate(`/join#${hash}`);
 	});
-	return h("div", {}, h("h2", {}, "Als Spieler beitreten"), form, error);
+	return h(
+		"section",
+		{},
+		h("h2", {}, t("start.joinTitle")),
+		form,
+		h("p", { className: "hint" }, t("start.joinHint")),
+		error,
+	);
 }
 
 function loginView(root: HTMLElement): void {
 	const password = h("input", {
 		type: "password",
-		placeholder: "GM-Passwort",
+		placeholder: t("start.password"),
 		autocomplete: "current-password",
 	});
-	const submit = h("button", { type: "submit", textContent: "Anmelden" });
+	const submit = h("button", {
+		type: "submit",
+		className: "secondary",
+		textContent: t("start.login"),
+	});
 	const error = errorLine();
 	const form = h("form", {}, password, submit);
 	form.addEventListener("submit", async (e) => {
@@ -74,16 +88,13 @@ function loginView(root: HTMLElement): void {
 			submit.disabled = false;
 		}
 	});
-	root.replaceChildren(
-		h("h1", {}, "Mistwarden"),
-		h(
-			"p",
-			{ className: "hint" },
-			"Anmeldung für die Spielleitung. Spieler treten über ihren Link bei.",
-		),
-		form,
-		error,
+	startPage(
+		root,
+		brand("Mistwarden", t("start.tagline"), true),
 		joinByLink(),
+		ornament(),
+		h("section", {}, h("h2", {}, t("start.gmTitle")), form, error),
+		h("footer", {}, deviceSettings()),
 	);
 }
 
@@ -92,13 +103,13 @@ async function roomsView(root: HTMLElement, token: string): Promise<void> {
 	const error = errorLine();
 	const name = h("input", {
 		type: "text",
-		placeholder: "Name des neuen Raums",
+		placeholder: t("rooms.newPlaceholder"),
 	});
 	const create = h(
 		"form",
 		{},
 		name,
-		h("button", { type: "submit" }, "Raum anlegen"),
+		h("button", { type: "submit", className: "secondary" }, t("rooms.create")),
 	);
 	create.addEventListener("submit", async (e) => {
 		e.preventDefault();
@@ -111,7 +122,7 @@ async function roomsView(root: HTMLElement, token: string): Promise<void> {
 		}
 	});
 	const logout = button(
-		"Abmelden",
+		t("rooms.logout"),
 		async () => {
 			await api.logout(token).catch(() => {});
 			storage.setGmToken(null);
@@ -127,7 +138,7 @@ async function roomsView(root: HTMLElement, token: string): Promise<void> {
 	});
 	const importStatus = h("p", { className: "hint", hidden: true });
 	const importButton = button(
-		"Raum importieren",
+		t("rooms.import"),
 		() => importFile.click(),
 		"secondary",
 	);
@@ -137,7 +148,7 @@ async function roomsView(root: HTMLElement, token: string): Promise<void> {
 		if (!file) return;
 		importButton.disabled = true;
 		importStatus.hidden = false;
-		importStatus.textContent = `„${file.name}“ wird importiert …`;
+		importStatus.textContent = t("rooms.importing", { file: file.name });
 		try {
 			const room = await api.importRoom(token, file);
 			navigate(`/room/${room.id}`);
@@ -149,21 +160,23 @@ async function roomsView(root: HTMLElement, token: string): Promise<void> {
 		}
 	});
 
-	root.replaceChildren(
-		h("h1", {}, "Mistwarden"),
-		h("h2", {}, "Räume"),
+	startPage(
+		root,
+		brand(t("rooms.title"), ""),
 		list,
-		create,
-		h("p", {}, importButton),
-		importFile,
-		importStatus,
-		h(
-			"p",
-			{ className: "hint" },
-			"Ein Import legt einen neuen Raum an. Spieler treten dort neu bei; Tokens und Zeichnungen gehören danach der Spielleitung.",
-		),
 		error,
-		h("p", {}, logout),
+		ornament(),
+		h(
+			"section",
+			{},
+			h("h2", {}, t("rooms.newTitle")),
+			create,
+			h("p", {}, importButton),
+			importFile,
+			importStatus,
+			h("p", { className: "hint" }, t("rooms.importHint")),
+		),
+		h("footer", {}, logout),
 	);
 
 	async function exportRoom(room: RoomSummary): Promise<void> {
@@ -186,8 +199,8 @@ async function roomsView(root: HTMLElement, token: string): Promise<void> {
 			"li",
 			{},
 			h("span", { className: "name" }, room.name),
-			button("Öffnen", () => navigate(`/room/${room.id}`)),
-			button("Exportieren", () => void exportRoom(room), "secondary"),
+			button(t("rooms.open"), () => navigate(`/room/${room.id}`)),
+			button(t("rooms.export"), () => void exportRoom(room), "secondary"),
 		);
 	}
 
@@ -205,7 +218,7 @@ async function roomsView(root: HTMLElement, token: string): Promise<void> {
 		list.replaceChildren(
 			...(rooms.length
 				? rooms.map(roomItem)
-				: [h("li", { className: "hint" }, "Noch keine Räume.")]),
+				: [h("li", { className: "hint" }, t("rooms.empty"))]),
 		);
 	} catch (err) {
 		handle(err);

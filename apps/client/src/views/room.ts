@@ -14,7 +14,7 @@ import {
 } from "@mistwarden/protocol";
 import { ApiError, api, assetMeta, errorText, playerLink } from "../api.ts";
 import { button, h } from "../dom.ts";
-import { LANG_NAMES, LANGS, parseLang, t } from "../i18n.ts";
+import { t } from "../i18n.ts";
 import {
 	ActionRejected,
 	defaultSocketUrl,
@@ -25,13 +25,6 @@ import type { Stage, StageCallbacks, StageTarget } from "../render/stage.ts";
 import { navigate } from "../router.ts";
 import { storage } from "../storage.ts";
 import {
-	applyAccent,
-	applyTheme,
-	parseAccent,
-	parseTheme,
-	THEMES,
-} from "../theme.ts";
-import {
 	confirmDialog,
 	createPanels,
 	createToast,
@@ -39,9 +32,11 @@ import {
 	promptDialog,
 } from "../ui.ts";
 import { createCard } from "./card.ts";
+import { deviceSettings } from "./device.ts";
 import { createFogTools } from "./fog.ts";
 import { createHandoutTools } from "./handouts.ts";
 import { createNoteTools } from "./notes.ts";
+import { brand, startPage } from "./start.ts";
 import { createTableTools } from "./table.ts";
 import { createTokenTools } from "./tokens.ts";
 
@@ -73,13 +68,10 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const gmToken = storage.gmToken();
 	const token = gmToken ?? storage.playerToken(roomId);
 	if (!token) {
-		root.replaceChildren(
-			h("h1", {}, "Mistwarden"),
-			h(
-				"p",
-				{},
-				"Kein Zugang zu diesem Raum. Bitte über den Spieler-Link beitreten.",
-			),
+		startPage(
+			root,
+			brand("Mistwarden", t("room.noAccess"), true),
+			button(t("start.toStart"), () => navigate("/")),
 		);
 		return () => {};
 	}
@@ -145,62 +137,15 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 						return;
 					storage.setPlayerToken(roomId, null);
 					cleanup();
-					root.replaceChildren(
-						h("h1", {}, "Mistwarden"),
-						h("p", {}, "Du hast den Raum verlassen."),
+					startPage(
+						root,
+						brand("Mistwarden", t("room.left"), true),
+						button(t("start.toStart"), () => navigate("/")),
 					);
 				},
 				"secondary",
 			);
-	const langSelect = h("select");
-	langSelect.append(
-		...LANGS.map((value) =>
-			h("option", { value, textContent: LANG_NAMES[value] }),
-		),
-	);
-	langSelect.value = document.documentElement.lang;
-	langSelect.addEventListener("change", () => {
-		storage.setLang(parseLang(langSelect.value));
-		// shortcut: Neuladen statt alle Views neu aufzubauen; ändern, sobald Views ihre Texte selbst aktualisieren können.
-		location.reload();
-	});
-	const themeSelect = h("select");
-	themeSelect.append(
-		...THEMES.map((value) =>
-			h("option", { value, textContent: t(`theme.${value}`) }),
-		),
-	);
-	themeSelect.value = storage.theme();
-	themeSelect.addEventListener("change", () => {
-		const theme = parseTheme(themeSelect.value);
-		storage.setTheme(theme);
-		applyTheme(theme);
-		if (!storage.accent()) accentInput.value = themeAccent();
-	});
-	// Ohne eigene Wahl zeigt das Feld den Akzent des aktuellen Themes.
-	const themeAccent = () =>
-		parseAccent(
-			getComputedStyle(document.documentElement)
-				.getPropertyValue("--accent")
-				.trim(),
-		) ?? "#000000";
-	const accentInput = h("input", { type: "color" });
-	accentInput.value = storage.accent() ?? themeAccent();
-	accentInput.addEventListener("input", () => {
-		const accent = parseAccent(accentInput.value);
-		storage.setAccent(accent);
-		applyAccent(accent);
-	});
-	const accentReset = button(
-		t("settings.accentReset"),
-		() => {
-			storage.setAccent(null);
-			applyAccent(null);
-			accentInput.value = themeAccent();
-		},
-		"secondary",
-	);
-	const themeRow = h("label", {}, `${t("settings.theme")} `, themeSelect);
+	const deviceRow = deviceSettings();
 	const panel = h(
 		"aside",
 		{ className: "panel", hidden: true },
@@ -209,15 +154,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		h("h2", {}, "Spieler"),
 		players,
 		gmPanel,
-		themeRow,
-		h(
-			"p",
-			{},
-			h("label", {}, `${t("settings.accent")} `, accentInput),
-			" ",
-			accentReset,
-		),
-		h("label", {}, `${t("settings.language")} `, langSelect),
+		deviceRow,
 		h("p", {}, leave),
 	);
 
@@ -381,7 +318,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		h("div", { className: "toasts" }, error.el, table.toast),
 		card.el,
 	);
-	panel.insertBefore(fog.settingsSection, themeRow);
+	panel.insertBefore(fog.settingsSection, deviceRow);
 
 	/** Antippen wählt genau ein Objekt aus – Token oder Fog-Fläche. */
 	const selectTarget = (target: StageTarget | null) => {

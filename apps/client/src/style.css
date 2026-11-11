@@ -8,6 +8,14 @@
 	--accent: #5b4b8a;
 	--on-accent: #fff;
 	--surface: #fff;
+	--scene-sky: #e9e4dc;
+	--scene-moon: #f3ede1;
+	--scene-moon-core: #fbf7ee;
+	--scene-far: #cfc8d8;
+	--scene-tower: #b9b1c6;
+	--scene-near: #a79fb6;
+	--scene-glow: #c9822b;
+	--scene-mist: rgb(255 255 255 / 0.55);
 	--ok: #2e7d4f;
 	--warn: #b5651d;
 	--bad: #b3261e;
@@ -18,7 +26,11 @@
 	--measure-fg: #1d1b19;
 	--shadow-color: rgb(0 0 0 / 0.35);
 	--scrim: rgb(0 0 0 / 0.35);
+	--radius-control: 6px;
 	--radius-panel: 14px;
+	--font-display:
+		"Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia,
+		serif;
 	font-family: system-ui, -apple-system, sans-serif;
 	font-size: 17px;
 	background: var(--bg);
@@ -35,6 +47,14 @@
 		--accent: #a99be0;
 		--on-accent: #1b1a1d;
 		--surface: #232126;
+		--scene-sky: #17161b;
+		--scene-moon: #211e2e;
+		--scene-moon-core: #2c2740;
+		--scene-far: #1f1c2a;
+		--scene-tower: #1a1724;
+		--scene-near: #14121a;
+		--scene-glow: #e0a458;
+		--scene-mist: rgb(169 155 224 / 0.08);
 	}
 }
 
@@ -47,6 +67,14 @@
 	--accent: #a99be0;
 	--on-accent: #1b1a1d;
 	--surface: #232126;
+	--scene-sky: #17161b;
+	--scene-moon: #211e2e;
+	--scene-moon-core: #2c2740;
+	--scene-far: #1f1c2a;
+	--scene-tower: #1a1724;
+	--scene-near: #14121a;
+	--scene-glow: #e0a458;
+	--scene-mist: rgb(169 155 224 / 0.08);
 }
 
 :root[data-theme="oled"] {
@@ -58,6 +86,14 @@
 	--accent: #a99be0;
 	--on-accent: #000;
 	--surface: #000;
+	--scene-sky: #000;
+	--scene-moon: #0e0d14;
+	--scene-moon-core: #17141f;
+	--scene-far: #0b0a10;
+	--scene-tower: #08070c;
+	--scene-near: #050408;
+	--scene-glow: #e0a458;
+	--scene-mist: rgb(169 155 224 / 0.06);
 }
 
 :root[data-theme="light"] {
@@ -136,7 +172,7 @@ button {
 	min-height: 44px;
 	padding: 0 0.75rem;
 	border: 1px solid var(--line);
-	border-radius: 6px;
+	border-radius: var(--radius-control);
 	background: transparent;
 	color: inherit;
 }
@@ -148,7 +184,7 @@ input[type="color"] {
 	vertical-align: middle;
 	background: none;
 	border: 1px solid var(--line);
-	border-radius: 6px;
+	border-radius: var(--radius-control);
 }
 
 input[type="text"],
@@ -179,7 +215,7 @@ input[type="password"] {
 	min-height: 44px;
 	padding: 0 0.75rem;
 	border: 1px solid var(--line);
-	border-radius: 6px;
+	border-radius: var(--radius-control);
 	background: transparent;
 	color: inherit;
 	flex: 1;
@@ -447,7 +483,7 @@ input.num {
 	min-height: 44px;
 	padding: 0 0.5rem;
 	border: 1px solid var(--line);
-	border-radius: 6px;
+	border-radius: var(--radius-control);
 	background: transparent;
 	color: inherit;
 	text-align: right;
@@ -583,7 +619,7 @@ button.swatch {
 	font-weight: 600;
 	color: var(--measure-fg);
 	background: var(--measure-bg);
-	border-radius: 6px;
+	border-radius: var(--radius-control);
 	box-shadow: 0 2px 8px var(--shadow-color);
 	pointer-events: none;
 	white-space: nowrap;
@@ -769,4 +805,341 @@ button.swatch {
 
 .handout-picks[hidden] {
 	display: none;
+}
+
+/* --- Symbole --- */
+
+.icon {
+	width: 1.5rem;
+	height: 1.5rem;
+	fill: none;
+	stroke: currentcolor;
+	stroke-width: 1.5;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+/* --- Geräte-Einstellungen (Sprache, Farbschema, Akzent) --- */
+
+.device-settings {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 0.5rem;
+}
+
+.device-settings label {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	color: var(--muted);
+	font-size: 0.8rem;
+}
+
+/* --- Start- und Beitrittsseite: Nachtszene mit Karte --- */
+
+.start {
+	position: fixed;
+	inset: 0;
+	display: flex;
+	overflow-y: auto;
+	padding: max(1rem, env(safe-area-inset-top)) 1rem
+		max(1rem, env(safe-area-inset-bottom));
+	background: var(--scene-sky);
+}
+
+.start-scene {
+	position: fixed;
+	inset: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.start-scene > * {
+	position: absolute;
+}
+
+.scene-moon {
+	top: 9%;
+	right: 14%;
+	width: 15rem;
+	height: 15rem;
+	border-radius: 50%;
+	background: var(--scene-moon);
+}
+
+.scene-moon-core {
+	top: calc(9% + 3rem);
+	right: calc(14% + 3rem);
+	width: 9rem;
+	height: 9rem;
+	background: var(--scene-moon-core);
+}
+
+.scene-hills {
+	right: 0;
+	bottom: 0;
+	left: 0;
+}
+
+.scene-hills-far {
+	height: 50%;
+	background: var(--scene-far);
+	clip-path: polygon(
+		0 62%,
+		9% 48%,
+		17% 55%,
+		27% 30%,
+		34% 44%,
+		44% 36%,
+		55% 58%,
+		66% 40%,
+		74% 52%,
+		86% 28%,
+		100% 50%,
+		100% 100%,
+		0 100%
+	);
+}
+
+.scene-tower {
+	bottom: 20%;
+	left: 13%;
+	width: 5.25rem;
+	height: 18.75rem;
+	background: var(--scene-tower);
+	clip-path: polygon(
+		8% 100%,
+		16% 22%,
+		0 22%,
+		0 10%,
+		14% 10%,
+		14% 0,
+		30% 0,
+		30% 10%,
+		42% 10%,
+		42% 0,
+		58% 0,
+		58% 10%,
+		70% 10%,
+		70% 0,
+		86% 0,
+		86% 10%,
+		100% 10%,
+		100% 22%,
+		84% 22%,
+		92% 100%
+	);
+}
+
+.scene-window {
+	bottom: calc(20% + 11.25rem);
+	left: calc(13% + 2.2rem);
+	width: 0.875rem;
+	height: 1.4rem;
+	border-radius: 0.45rem 0.45rem 0 0;
+	background: var(--scene-glow);
+}
+
+.scene-hills-near {
+	height: 33%;
+	background: var(--scene-near);
+	clip-path: polygon(
+		0 45%,
+		12% 30%,
+		24% 48%,
+		38% 22%,
+		52% 50%,
+		63% 34%,
+		78% 56%,
+		90% 38%,
+		100% 46%,
+		100% 100%,
+		0 100%
+	);
+}
+
+.scene-mist {
+	border-radius: 99rem;
+	background: var(--scene-mist);
+}
+
+.mist-1 {
+	bottom: 27%;
+	left: -8%;
+	width: 75%;
+	height: 2.9rem;
+}
+
+.mist-2 {
+	bottom: 19%;
+	left: 35%;
+	width: 80%;
+	height: 3.6rem;
+}
+
+.mist-3 {
+	bottom: 10%;
+	left: -12%;
+	width: 88%;
+	height: 4.4rem;
+}
+
+.start-card {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+	--radius-control: 10px;
+
+	width: min(27.5rem, 100%);
+	margin: auto;
+	padding: 2rem 2rem 1.75rem;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-panel);
+	box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+/* Eckmarken: acht kurze Striche als Hintergrundflächen, ohne zusätzliche Elemente. */
+.start-card::before {
+	--mark: linear-gradient(var(--accent), var(--accent));
+
+	content: "";
+	position: absolute;
+	inset: 0.6rem;
+	pointer-events: none;
+	background:
+		var(--mark) top left / 0.9rem 2px,
+		var(--mark) top left / 2px 0.9rem,
+		var(--mark) top right / 0.9rem 2px,
+		var(--mark) top right / 2px 0.9rem,
+		var(--mark) bottom left / 0.9rem 2px,
+		var(--mark) bottom left / 2px 0.9rem,
+		var(--mark) bottom right / 0.9rem 2px,
+		var(--mark) bottom right / 2px 0.9rem;
+	background-repeat: no-repeat;
+}
+
+.start-brand {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.4rem;
+	text-align: center;
+}
+
+.start-brand h1,
+.start-card h2,
+.start-card .name,
+.join-form label {
+	font-family: var(--font-display);
+	font-weight: 600;
+}
+
+.start-brand h1 {
+	margin: 0;
+	font-size: 1.75rem;
+	text-wrap: balance;
+}
+
+.start-brand h1.wordmark {
+	font-size: 2rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.eyebrow {
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.75rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.lantern {
+	width: 3rem;
+	height: 3rem;
+	color: var(--accent);
+}
+
+.lantern path + path {
+	color: var(--scene-glow);
+}
+
+.start-card h2 {
+	margin: 0 0 0.5rem;
+	font-size: 1.1rem;
+}
+
+.start-card p {
+	margin: 0.5rem 0 0;
+}
+
+.start-brand p {
+	margin: 0;
+}
+
+.start-card form {
+	flex-wrap: nowrap;
+}
+
+.start-card input:not([type="color"]),
+.start-card select {
+	flex: 1;
+	min-width: 0;
+	background: var(--bg);
+}
+
+.start-card ul {
+	margin: 0;
+	padding: 0;
+}
+
+.start-card li {
+	flex-wrap: nowrap;
+	margin-bottom: 0.5rem;
+	padding: 0.5rem 0.5rem 0.5rem 1rem;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+}
+
+.start-card .name {
+	flex: 1;
+	font-size: 1.1rem;
+}
+
+.start-card footer {
+	padding-top: 1rem;
+	border-top: 1px solid var(--line);
+}
+
+.join-form {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.join-form label {
+	font-size: 1.1rem;
+}
+
+.ornament {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.ornament::before,
+.ornament::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: var(--line);
+}
+
+.ornament span {
+	width: 0.5rem;
+	height: 0.5rem;
+	background: var(--accent);
+	transform: rotate(45deg);
 }

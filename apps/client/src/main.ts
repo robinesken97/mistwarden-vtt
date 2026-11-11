@@ -1,11 +1,11 @@
-import { h } from "./dom.ts";
-import { detectLang, setLang } from "./i18n.ts";
+import { detectLang, setLang, t } from "./i18n.ts";
 import { parseRoute, startRouter } from "./router.ts";
 import { storage } from "./storage.ts";
 import { applyAccent, applyTheme } from "./theme.ts";
 import { homeView } from "./views/home.ts";
 import { joinView } from "./views/join.ts";
 import { roomView } from "./views/room.ts";
+import { brand, startPage } from "./views/start.ts";
 
 const lang = storage.lang() ?? detectLang(navigator.language);
 setLang(lang);
@@ -34,10 +34,7 @@ startRouter(() => {
 			cleanup = roomView(root, route.roomId);
 			return;
 		case "notFound":
-			root.replaceChildren(
-				h("h1", {}, "Mistwarden"),
-				h("p", {}, "Diese Seite gibt es nicht."),
-			);
+			startPage(root, brand("Mistwarden", t("start.notFound"), true));
 	}
 });
 

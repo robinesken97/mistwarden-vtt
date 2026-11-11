@@ -1,7 +1,9 @@
 import { ApiError, api, errorText } from "../api.ts";
 import { errorLine, h } from "../dom.ts";
+import { t } from "../i18n.ts";
 import { navigate } from "../router.ts";
 import { storage } from "../storage.ts";
+import { brand, ornament, startPage } from "./start.ts";
 
 /** Spieler-Link: Namen wählen und beitreten – oder direkt weiter, wenn schon beigetreten. */
 export async function joinView(
@@ -9,24 +11,20 @@ export async function joinView(
 	linkToken: string,
 ): Promise<void> {
 	const error = errorLine();
-	root.replaceChildren(
-		h("h1", {}, "Mistwarden"),
-		h("p", { className: "hint" }, "Link wird geprüft …"),
-		error,
-	);
+	startPage(root, brand("Mistwarden", t("join.checking"), true), error);
 
 	let info: { roomId: string; roomName: string };
 	try {
 		info = await api.linkInfo(linkToken);
 	} catch (err) {
-		root.replaceChildren(
-			h("h1", {}, "Mistwarden"),
-			h(
-				"p",
-				{},
+		startPage(
+			root,
+			brand(
+				"Mistwarden",
 				err instanceof ApiError && err.code === "not_found"
-					? "Dieser Spieler-Link ist ungültig oder wurde erneuert. Bitte die Spielleitung um den aktuellen Link."
+					? t("join.invalid")
 					: errorText(err),
+				true,
 			),
 		);
 		return;
@@ -45,12 +43,22 @@ export async function joinView(
 
 	const name = h("input", {
 		type: "text",
-		placeholder: "Dein Name",
+		id: "join-name",
 		maxLength: 32,
 		autocomplete: "off",
 	});
-	const submit = h("button", { type: "submit", textContent: "Beitreten" });
-	const form = h("form", {}, name, submit);
+	const submit = h("button", {
+		type: "submit",
+		textContent: t("join.submit"),
+	});
+	const form = h(
+		"form",
+		{ className: "join-form" },
+		h("label", { htmlFor: "join-name" }, t("join.nameLabel")),
+		name,
+		h("p", { className: "hint" }, t("join.nameHint")),
+		submit,
+	);
 	form.addEventListener("submit", async (e) => {
 		e.preventDefault();
 		if (!name.value.trim()) return;
@@ -66,9 +74,10 @@ export async function joinView(
 		}
 	});
 
-	root.replaceChildren(
-		h("h1", {}, "Mistwarden"),
-		h("p", {}, "Beitreten zu ", h("strong", {}, info.roomName)),
+	startPage(
+		root,
+		brand(info.roomName, t("join.invited")),
+		ornament(),
 		form,
 		error,
 	);
