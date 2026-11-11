@@ -8,6 +8,7 @@
 	--accent: #5b4b8a;
 	--on-accent: #fff;
 	--surface: #fff;
+	--surface-2: #ebe8e2;
 	--scene-sky: #e9e4dc;
 	--scene-moon: #f3ede1;
 	--scene-moon-core: #fbf7ee;
@@ -47,6 +48,7 @@
 		--accent: #a99be0;
 		--on-accent: #1b1a1d;
 		--surface: #232126;
+		--surface-2: #2e2c33;
 		--scene-sky: #17161b;
 		--scene-moon: #211e2e;
 		--scene-moon-core: #2c2740;
@@ -67,6 +69,7 @@
 	--accent: #a99be0;
 	--on-accent: #1b1a1d;
 	--surface: #232126;
+	--surface-2: #2e2c33;
 	--scene-sky: #17161b;
 	--scene-moon: #211e2e;
 	--scene-moon-core: #2c2740;
@@ -86,6 +89,7 @@
 	--accent: #a99be0;
 	--on-accent: #000;
 	--surface: #000;
+	--surface-2: #141416;
 	--scene-sky: #000;
 	--scene-moon: #0e0d14;
 	--scene-moon-core: #17141f;
@@ -177,6 +181,13 @@ button {
 	color: inherit;
 }
 
+/* Eingabefelder nie unter 16 px, sonst zoomt Safari beim Fokus hinein. */
+input[type="text"],
+input[type="url"],
+select {
+	font-size: max(16px, 1em);
+}
+
 input[type="color"] {
 	width: 3rem;
 	height: 2.75rem;
@@ -212,6 +223,7 @@ button.secondary {
 
 input[type="password"] {
 	font: inherit;
+	font-size: max(16px, 1em);
 	min-height: 44px;
 	padding: 0 0.75rem;
 	border: 1px solid var(--line);
@@ -283,9 +295,12 @@ main.room-mode {
 }
 
 .room {
+	--radius-control: 10px;
+
 	position: fixed;
 	inset: 0;
 	overflow: hidden;
+	font-size: 15px;
 	background: var(--map-bg);
 }
 
@@ -318,18 +333,24 @@ main.room-mode {
 	top: env(safe-area-inset-top);
 	left: 0;
 	right: 0;
+	box-sizing: border-box;
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.5rem;
-	padding: 0.5rem max(0.75rem, env(safe-area-inset-left));
-	background: color-mix(in srgb, var(--bg) 88%, transparent);
+	gap: 4px;
+	height: 52px;
+	padding: 0 max(8px, env(safe-area-inset-left));
+	background: var(--surface);
 	border-bottom: 1px solid var(--line);
-	font-size: 0.95rem;
 }
 
 .hud-title {
-	font-size: 1.05rem;
+	padding: 0 4px;
+}
+
+.hud-status {
+	padding-right: 8px;
+	color: var(--muted);
+	font-size: 13px;
 }
 
 .hud-space {
@@ -339,8 +360,12 @@ main.room-mode {
 .hud-scene-button {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.25rem;
+	gap: 6px;
 	min-width: 0;
+	padding: 0 12px;
+	font-size: 14px;
+	background: var(--surface-2);
+	border-color: transparent;
 }
 
 .hud-scene {
@@ -362,14 +387,14 @@ main.room-mode {
 
 .panel {
 	position: absolute;
-	top: calc(var(--hud-height, 3.25rem) + 0.5rem);
-	right: max(0.5rem, env(safe-area-inset-right));
-	/* Endet über der Werkzeugleiste, damit sich beide nie überdecken. */
-	bottom: calc(var(--bar-bottom) + max(0.5rem, env(safe-area-inset-bottom)));
-	width: min(26rem, calc(100vw - 1rem));
+	top: calc(var(--hud-height, 52px) + 8px);
+	right: max(8px, env(safe-area-inset-right));
+	bottom: max(8px, env(safe-area-inset-bottom));
+	box-sizing: border-box;
+	width: min(320px, calc(100vw - 16px));
 	overflow-y: auto;
 	-webkit-overflow-scrolling: touch;
-	padding: 0 1rem 1rem;
+	padding: 0 12px 12px;
 	background: var(--surface);
 	border: 1px solid var(--line);
 	border-radius: var(--radius-panel);
@@ -383,15 +408,15 @@ main.room-mode {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin: 0 -1rem;
-	padding: 0.25rem 0.25rem 0.25rem 1rem;
+	margin: 0 -12px;
+	padding: 4px 4px 4px 16px;
 	background: var(--surface);
 	border-bottom: 1px solid var(--line);
 }
 
 .panel-head h2 {
 	margin: 0;
-	font-size: 1.05rem;
+	font-size: 16px;
 }
 
 .panel-head button {
@@ -490,6 +515,7 @@ select {
 
 input.num {
 	font: inherit;
+	font-size: max(16px, 1em);
 	width: 5.5rem;
 	min-height: 44px;
 	padding: 0 0.5rem;
@@ -565,28 +591,37 @@ input.num {
 /* --- Werkzeugleiste: unten in Daumenhöhe, am Laptop links --- */
 
 .room {
-	--bar-bottom: 4.75rem;
+	--bar-bottom: 78px;
 }
 
 .toolbar {
 	position: absolute;
 	left: 50%;
-	bottom: max(0.5rem, env(safe-area-inset-bottom));
+	bottom: max(12px, env(safe-area-inset-bottom));
 	transform: translateX(-50%);
 	display: flex;
-	gap: 0.25rem;
-	max-width: calc(100vw - 1rem);
+	gap: 2px;
+	max-width: calc(100vw - 16px);
 	overflow-x: auto;
 	white-space: nowrap;
-	padding: 0.25rem;
+	padding: 4px;
 	background: var(--surface);
 	border: 1px solid var(--line);
-	border-radius: var(--radius-panel);
+	border-radius: 16px;
 	box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 .toolbar .tool-switch {
 	flex-wrap: nowrap;
+	gap: 2px;
+}
+
+/* Bei offenem Panel sitzt die Leiste mittig im freien Bereich links davon (Panel 320 + 2 × 8 px). */
+@media (max-width: 1099.98px), (pointer: coarse) {
+	.room.panel-open .toolbar {
+		left: calc((100% - 336px) / 2);
+		max-width: calc(100% - 352px);
+	}
 }
 
 @media (min-width: 1100px) and (pointer: fine) {
@@ -597,7 +632,7 @@ input.num {
 	.toolbar {
 		top: 50%;
 		bottom: auto;
-		left: max(0.5rem, env(safe-area-inset-left));
+		left: max(12px, env(safe-area-inset-left));
 		transform: translateY(-50%);
 		flex-direction: column;
 		overflow: visible;
@@ -710,7 +745,7 @@ button.swatch {
 /* Meldungen: Fehler und Würfelergebnisse an derselben Stelle, untereinander. */
 .toasts {
 	position: absolute;
-	top: calc(var(--hud-height, 3.25rem) + 0.5rem);
+	top: calc(var(--hud-height, 52px) + 12px);
 	left: 50%;
 	transform: translateX(-50%);
 	display: flex;
@@ -783,6 +818,7 @@ button.swatch {
 .card-body textarea {
 	width: 100%;
 	font: inherit;
+	font-size: max(16px, 1em);
 	resize: vertical;
 }
 
@@ -826,11 +862,11 @@ button.swatch {
 /* --- Symbole --- */
 
 .icon {
-	width: 1.5rem;
-	height: 1.5rem;
+	width: 22px;
+	height: 22px;
 	fill: none;
 	stroke: currentcolor;
-	stroke-width: 1.5;
+	stroke-width: 1.75;
 	stroke-linecap: round;
 	stroke-linejoin: round;
 }
@@ -1166,7 +1202,9 @@ button.icon-button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 0.35rem;
+	gap: 6px;
+	padding: 0 12px;
+	font-size: 14px;
 	border-color: transparent;
 }
 
@@ -1182,11 +1220,11 @@ button.icon-button.active {
 
 .toolbar .icon-button {
 	flex-direction: column;
-	gap: 0.15rem;
-	min-width: 4.25rem;
-	min-height: 3.5rem;
-	padding: 0 0.4rem;
-	font-size: 0.7rem;
+	gap: 3px;
+	width: 68px;
+	min-height: 56px;
+	padding: 0;
+	font-size: 11px;
 	border-radius: 12px;
 }
 
@@ -1204,6 +1242,6 @@ button.icon-button.active {
 
 .hud-scene-button .icon {
 	flex: none;
-	width: 1rem;
-	height: 1rem;
+	width: 16px;
+	height: 16px;
 }

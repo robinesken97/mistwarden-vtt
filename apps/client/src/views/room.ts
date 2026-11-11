@@ -110,6 +110,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const panels = createPanels(() => {
 		menuButton.classList.toggle("active", !panel.hidden);
 		sceneButton.classList.toggle("active", !scenePanel.hidden);
+		roomEl.classList.toggle("panel-open", panels.isOpen());
 		table.render();
 	});
 	// GM: Der Szenenname in der Kopfzeile öffnet das Szenen-Panel (Liste, Karte, Grid).
