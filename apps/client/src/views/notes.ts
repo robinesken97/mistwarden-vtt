@@ -63,7 +63,7 @@ export function createNoteTools(ctx: NoteToolsContext) {
 		if (!ctx.isGm) {
 			ctx.card.show(
 				`note:${id}`,
-				h("h2", {}, n.title || "Notiz"),
+				h("h2", {}, n.title || t("note.title")),
 				h("p", { className: "card-text" }, n.text),
 			);
 			return;
@@ -72,26 +72,26 @@ export function createNoteTools(ctx: NoteToolsContext) {
 			type: "text",
 			value: n.title,
 			maxLength: 60,
-			placeholder: "Titel",
+			placeholder: t("common.title"),
 		});
 		const text = h("textarea", {
 			value: n.text,
 			maxLength: 4000,
 			rows: 6,
-			placeholder: "Text der Notiz",
+			placeholder: t("note.text"),
 		});
 		const visible = h("input", { type: "checkbox", checked: !n.hidden });
 		ctx.card.show(
 			`note:${id}`,
-			h("h2", {}, "Notiz"),
+			h("h2", {}, t("note.title")),
 			title,
 			text,
-			h("label", {}, visible, "Für Spieler sichtbar"),
+			h("label", {}, visible, t("note.visible")),
 			h(
 				"div",
 				{ className: "row card-actions" },
 				button(
-					"Löschen",
+					t("common.delete"),
 					async () => {
 						if (
 							!(await confirmDialog(
@@ -105,7 +105,7 @@ export function createNoteTools(ctx: NoteToolsContext) {
 					},
 					"danger",
 				),
-				button("Speichern", () => {
+				button(t("common.save"), () => {
 					ctx.run({
 						op: "update",
 						kind: "note",

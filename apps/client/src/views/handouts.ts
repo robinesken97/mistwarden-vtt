@@ -53,7 +53,7 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 	function recipients(audience: Audience | undefined): string {
 		switch (audience?.type) {
 			case "all":
-				return "alle";
+				return t("handout.everyone");
 			case "players": {
 				const names = audience.playerIds.map(
 					(id) =>
@@ -63,10 +63,10 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 								| undefined
 						)?.name ?? "?",
 				);
-				return names.join(", ") || "niemand";
+				return names.join(", ") || t("handout.nobody");
 			}
 			default:
-				return "Entwurf (nur du)";
+				return t("handout.draftYou");
 		}
 	}
 
@@ -78,7 +78,7 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 			assetMeta(d.assetId)
 				.then((meta) => image.replaceWith(imageView(meta)))
 				.catch(() => {
-					image.textContent = "Bild nicht gefunden.";
+					image.textContent = t("handout.imageNotFound");
 				});
 		}
 		ctx.card.show(
@@ -91,9 +91,9 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 						h(
 							"p",
 							{ className: "hint" },
-							`Empfänger: ${recipients(e.audience)}`,
+							t("handout.recipients", { who: recipients(e.audience) }),
 						),
-						button("Bearbeiten", () => edit(e.id)),
+						button(t("common.edit"), () => edit(e.id)),
 					]
 				: []),
 		);
@@ -110,10 +110,10 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 		);
 		ctx.card.show(
 			"handouts",
-			h("h2", {}, "Handouts"),
+			h("h2", {}, t("handouts.title")),
 			items.length
 				? h("ul", { className: "handout-list" }, ...items)
-				: h("p", { className: "hint" }, "Noch keine Handouts."),
+				: h("p", { className: "hint" }, t("handout.none")),
 		);
 	}
 
@@ -135,19 +135,23 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 			type: "text",
 			value: d?.title ?? "",
 			maxLength: 100,
-			placeholder: "Titel",
+			placeholder: t("common.title"),
 		});
 		const text = h("textarea", {
 			value: d?.text ?? "",
 			maxLength: 10_000,
 			rows: 6,
-			placeholder: "Text (optional, wenn ein Bild gesetzt ist)",
+			placeholder: t("handout.textPlaceholder"),
 		});
 		const imageStatus = h("span", { className: "hint" });
 		const file = h("input", { type: "file", accept: "image/*", hidden: true });
-		const upload = button("Bild hochladen", () => file.click(), "secondary");
+		const upload = button(
+			t("handout.uploadImage"),
+			() => file.click(),
+			"secondary",
+		);
 		const removeImage = button(
-			"Bild entfernen",
+			t("handout.removeImage"),
 			() => {
 				assetId = null;
 				showImage();
@@ -155,7 +159,9 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 			"secondary",
 		);
 		function showImage(): void {
-			imageStatus.textContent = assetId ? "Bild gesetzt." : "Kein Bild.";
+			imageStatus.textContent = assetId
+				? t("handout.imageSet")
+				: t("handout.noImage");
 			removeImage.hidden = !assetId;
 		}
 		showImage();
@@ -164,7 +170,7 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 			file.value = "";
 			if (!f || !ctx.gmToken) return;
 			upload.disabled = true;
-			imageStatus.textContent = `„${f.name}“ wird hochgeladen …`;
+			imageStatus.textContent = t("common.uploading", { file: f.name });
 			try {
 				const meta = await api.uploadAsset(ctx.gmToken, f, "map");
 				assetId = meta.id;
@@ -180,9 +186,9 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 		const audience = e?.audience ?? { type: "gm" };
 		const mode = h("select");
 		for (const [value, label] of [
-			["gm", "Entwurf (nur ich)"],
-			["all", "Alle Spieler"],
-			["players", "Ausgewählte Spieler"],
+			["gm", t("handout.draftMe")],
+			["all", t("handout.all")],
+			["players", t("handout.some")],
 		]) {
 			mode.append(h("option", { value, textContent: label }));
 		}
@@ -231,18 +237,18 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 			};
 			if (!data.title) {
 				error.hidden = false;
-				error.textContent = "Bitte einen Titel angeben.";
+				error.textContent = t("handout.needTitle");
 				return;
 			}
 			if (!data.text.trim() && !data.assetId) {
 				error.hidden = false;
-				error.textContent = "Text oder Bild angeben.";
+				error.textContent = t("handout.needContent");
 				return;
 			}
 			const target = chosenAudience();
 			if (show && target.type === "gm") {
 				error.hidden = false;
-				error.textContent = "Zum Zeigen Empfänger wählen.";
+				error.textContent = t("handout.needRecipients");
 				return;
 			}
 			const ok = await ctx.run(
@@ -267,12 +273,12 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 
 		ctx.card.show(
 			`handout-edit:${handoutId}`,
-			h("h2", {}, e ? "Handout bearbeiten" : "Neues Handout"),
+			h("h2", {}, e ? t("handout.edit") : t("handout.new")),
 			title,
 			text,
 			h("div", { className: "row" }, upload, removeImage, imageStatus),
 			file,
-			h("label", {}, "Empfänger ", mode),
+			h("label", {}, t("handout.recipientsLabel"), mode),
 			pickList,
 			error,
 			h(
@@ -281,7 +287,7 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 				...(e
 					? [
 							button(
-								"Löschen",
+								t("common.delete"),
 								async () => {
 									if (
 										!(await confirmDialog(
@@ -297,8 +303,8 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 							),
 						]
 					: []),
-				button("Speichern", () => void save(false), "secondary"),
-				button("Zeigen", () => void save(true)),
+				button(t("common.save"), () => void save(false), "secondary"),
+				button(t("handout.show"), () => void save(true)),
 			),
 		);
 		title.focus();
@@ -309,9 +315,9 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 	const gmSection = h(
 		"div",
 		{},
-		h("h2", {}, "Handouts"),
+		h("h2", {}, t("handouts.title")),
 		gmList,
-		button("Neues Handout", () => edit(null)),
+		button(t("handout.new"), () => edit(null)),
 	);
 	// GM: eigenes Panel mit Liste und „Neues Handout“; Spieler: Karte mit ihren Handouts.
 	const hudButton = iconButton(ICONS.handout, t("handouts.title"), () =>
@@ -339,7 +345,7 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 								h("span", { className: "hint" }, ` ${recipients(e.audience)}`),
 							),
 						)
-					: [h("li", { className: "hint" }, "Noch keine Handouts.")]),
+					: [h("li", { className: "hint" }, t("handout.none"))]),
 			);
 		}
 		listKey = key;

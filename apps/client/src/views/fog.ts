@@ -107,9 +107,7 @@ export function createFogTools(ctx: FogToolsContext) {
 			0,
 		);
 		if (coords > MAX_FOG_COORDS) {
-			ctx.showError(
-				"Die Fog-Form ist zu detailliert. Bitte in kleineren Stücken zeichnen.",
-			);
+			ctx.showError(t("fog.tooDetailed"));
 			return;
 		}
 		await ctx.run({
@@ -162,9 +160,11 @@ export function createFogTools(ctx: FogToolsContext) {
 
 	// --- Zeichenleiste ---
 	const pointsText = h("span");
-	const finishButton = button("Fertig", () => ctx.stage()?.finishPolygon());
+	const finishButton = button(t("common.done"), () =>
+		ctx.stage()?.finishPolygon(),
+	);
 	const undoButton = button(
-		"Zurück",
+		t("common.back"),
 		() => ctx.stage()?.undoPolygonPoint(),
 		"secondary",
 	);
@@ -174,7 +174,7 @@ export function createFogTools(ctx: FogToolsContext) {
 		pointsText,
 		undoButton,
 		finishButton,
-		button("Abbrechen", () => ctx.stage()?.cancelDrawing(), "secondary"),
+		button(t("dialog.cancel"), () => ctx.stage()?.cancelDrawing(), "secondary"),
 	);
 	const brushText = h("span");
 	const brushGroup = h(
@@ -184,7 +184,7 @@ export function createFogTools(ctx: FogToolsContext) {
 		brushText,
 		button("+", () => stepBrush(1), "secondary"),
 	);
-	const rectHint = h("span", { className: "hint" }, "Rechteck aufziehen");
+	const rectHint = h("span", { className: "hint" }, t("fog.rectHint"));
 	const drawBar = h(
 		"div",
 		{ className: "selection-bar", hidden: true },
@@ -204,14 +204,14 @@ export function createFogTools(ctx: FogToolsContext) {
 
 	// --- Menü an der gewählten Fog-Fläche ---
 	const fogName = h("strong", { className: "bar-name" });
-	const activeSwitch = menuSwitch("Deckt ab", () => {
+	const activeSwitch = menuSwitch(t("fog.covers"), () => {
 		const e = byId(selectedId);
 		if (e) setActive(e.id, !(e.data as FogData).active);
 	});
 	const selectBar = menu(fogName, () => select(null), [
 		activeSwitch.el,
 		menuDivider(),
-		menuItem("Umbenennen", async () => {
+		menuItem(t("common.rename"), async () => {
 			const e = byId(selectedId);
 			if (!e) return;
 			const name = await promptDialog(
@@ -228,7 +228,7 @@ export function createFogTools(ctx: FogToolsContext) {
 			}
 		}),
 		menuItem(
-			"Löschen",
+			t("common.delete"),
 			async () => {
 				const e = byId(selectedId);
 				if (
@@ -249,17 +249,13 @@ export function createFogTools(ctx: FogToolsContext) {
 	const gmSection = h(
 		"div",
 		{},
-		h("h2", {}, "Fog"),
-		h(
-			"p",
-			{ className: "hint" },
-			"Fog-Flächen decken ab. Aufdecken: Fläche ausschalten. Zeichnen mit „Polygon“ (Ecken antippen, ersten Punkt zum Schließen) oder „Pinsel“. Verschieben und Zoomen beim Zeichnen mit zwei Fingern bzw. Mausrad.",
-		),
+		h("h2", {}, t("group.fog")),
+		h("p", { className: "hint" }, t("fog.help")),
 		h(
 			"div",
 			{ className: "row" },
-			button("Alle abdecken", () => setAll(true), "secondary"),
-			button("Alle aufdecken", () => setAll(false), "secondary"),
+			button(t("fog.coverAll"), () => setAll(true), "secondary"),
+			button(t("fog.revealAll"), () => setAll(false), "secondary"),
 		),
 		list,
 	);
@@ -272,8 +268,8 @@ export function createFogTools(ctx: FogToolsContext) {
 	const settingsSection = h(
 		"div",
 		{},
-		h("h2", {}, "Darstellung"),
-		h("label", {}, animateBox, "Nebel animieren"),
+		h("h2", {}, t("settings.display")),
+		h("label", {}, animateBox, t("fog.animate")),
 	);
 
 	function setAll(active: boolean): void {
@@ -299,17 +295,21 @@ export function createFogTools(ctx: FogToolsContext) {
 		brushGroup.hidden = tool !== "brush";
 		rectHint.hidden = tool !== "rect";
 		pointsText.textContent =
-			polygonPoints === 0 ? "Ecken antippen" : `${polygonPoints} Punkte`;
+			polygonPoints === 0
+				? t("fog.tapCorners")
+				: t("fog.points", { count: polygonPoints });
 		finishButton.disabled = polygonPoints < 3;
 		undoButton.disabled = polygonPoints === 0;
-		brushText.textContent = `Pinsel ${String(brushCells).replace(".", ",")} Felder`;
+		brushText.textContent = t("fog.brushSize", {
+			size: brushCells.toLocaleString(document.documentElement.lang),
+		});
 
 		const e = byId(selectedId);
 		if (selectedId && (!e || !sceneFog().includes(e))) selectedId = null;
 		selectBar.hidden = !e || selectedId === null;
 		if (e && selectedId) {
 			const f = e.data as FogData;
-			fogName.textContent = f.name || "Fog-Fläche";
+			fogName.textContent = f.name || t("fog.area");
 			activeSwitch.set(f.active);
 		}
 
@@ -322,16 +322,18 @@ export function createFogTools(ctx: FogToolsContext) {
 				h(
 					"span",
 					{ className: "name" },
-					f.name || `Fläche ${i + 1}`,
-					f.active ? "" : h("span", { className: "badge muted" }, "aufgedeckt"),
+					f.name || t("fog.areaN", { n: i + 1 }),
+					f.active
+						? ""
+						: h("span", { className: "badge muted" }, t("fog.revealedBadge")),
 				),
 				button(
-					f.active ? "Aufdecken" : "Abdecken",
+					f.active ? t("fog.reveal") : t("fog.cover"),
 					() => setActive(entity.id, !f.active),
 					"secondary",
 				),
 				button(
-					"Auswählen",
+					t("fog.select"),
 					() => {
 						setTool("select");
 						select(entity.id);
@@ -343,13 +345,7 @@ export function createFogTools(ctx: FogToolsContext) {
 		list.replaceChildren(
 			...(items.length
 				? items
-				: [
-						h(
-							"li",
-							{ className: "hint" },
-							"Keine Fog-Flächen in dieser Szene.",
-						),
-					]),
+				: [h("li", { className: "hint" }, t("fog.none"))]),
 		);
 	}
 
