@@ -272,4 +272,8 @@ export const de = {
 	"token.imageLabel": "Token-Bild",
 	"fog.brushSmaller": "Pinsel kleiner",
 	"fog.brushLarger": "Pinsel größer",
+	"settings.dice": "Würfelanimation",
+	"dice.mode.3d": "3D",
+	"dice.mode.simple": "Einfach",
+	"dice.mode.off": "Aus",
 } as const;

@@ -45,6 +45,8 @@ export interface TableToolsContext {
 	toolTaken(): void;
 	/** Nach jedem Neuzeichnen: die Werkzeugleiste gleicht sich ab. */
 	toolChanged(): void;
+	/** Ein neuer, offener Wurf ist eingetroffen (nicht beim Laden oder Nachholen). */
+	rolled(id: string, roll: RollData, color: string): void;
 	/** Zurück zum Auswählen (Werkzeug der Raumansicht). */
 	selectTool(): void;
 	/** Öffnet oder schließt ein Panel; die Raumansicht hält immer nur eines offen. */
@@ -93,6 +95,13 @@ export function createTableTools(ctx: TableToolsContext) {
 		if (id === null) return "GM";
 		const p = ctx.conn.entities.get(`player:${id}`);
 		return (p?.data as PlayerData | undefined)?.name ?? t("player.unknown");
+	}
+
+	/** Farbe eines Spielers; die GM würfelt in ihrer Standardfarbe. */
+	function colorOf(playerId: string | null): string {
+		if (playerId === null) return GM_COLOR;
+		const p = ctx.conn.entities.get(`player:${playerId}`);
+		return (p?.data as PlayerData | undefined)?.color ?? GM_COLOR;
 	}
 
 	function myColor(): string {
@@ -470,7 +479,12 @@ export function createTableTools(ctx: TableToolsContext) {
 		if (knownRolls && ctx.conn.status === "online") {
 			const fresh = list.filter((e) => !knownRolls?.has(e.id));
 			const last = fresh[fresh.length - 1];
-			if (last) showToast(last);
+			if (last) {
+				showToast(last);
+				const roll = last.data as RollData;
+				// Verdeckte Würfe werden nicht animiert.
+				if (!roll.hidden) ctx.rolled(last.id, roll, colorOf(roll.authorId));
+			}
 		}
 		knownRolls = ctx.conn.status === "online" ? ids : knownRolls;
 	}

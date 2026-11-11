@@ -1,4 +1,5 @@
 // Einstellungen, die nur dieses Gerät betreffen: Sprache, Farbschema, Akzentfarbe.
+import { DICE_MODES, parseDiceMode } from "../dice/mode.ts";
 import { button, h } from "../dom.ts";
 import { LANG_NAMES, LANGS, parseLang, t } from "../i18n.ts";
 import { storage } from "../storage.ts";
@@ -10,7 +11,18 @@ import {
 	THEMES,
 } from "../theme.ts";
 
-export function deviceSettings(): HTMLElement {
+/** `withDice`: im Raum zusätzlich die Wahl der Würfelanimation. */
+export function deviceSettings(withDice = false): HTMLElement {
+	const diceSelect = h("select");
+	diceSelect.append(
+		...DICE_MODES.map((value) =>
+			h("option", { value, textContent: t(`dice.mode.${value}`) }),
+		),
+	);
+	diceSelect.value = storage.diceMode();
+	diceSelect.addEventListener("change", () =>
+		storage.setDiceMode(parseDiceMode(diceSelect.value)),
+	);
 	const langSelect = h("select");
 	langSelect.append(
 		...LANGS.map((value) =>
@@ -66,5 +78,8 @@ export function deviceSettings(): HTMLElement {
 		h("label", {}, t("settings.theme"), themeSelect),
 		h("label", {}, t("settings.accent"), accentInput),
 		accentReset,
+		...(withDice
+			? [h("label", { className: "wide" }, t("settings.dice"), diceSelect)]
+			: []),
 	);
 }

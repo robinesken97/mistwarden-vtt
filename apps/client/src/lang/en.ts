@@ -273,4 +273,8 @@ export const en: Record<keyof typeof de, string> = {
 	"token.imageLabel": "Token image",
 	"fog.brushSmaller": "Smaller brush",
 	"fog.brushLarger": "Larger brush",
+	"settings.dice": "Dice animation",
+	"dice.mode.3d": "3D",
+	"dice.mode.simple": "Simple",
+	"dice.mode.off": "Off",
 };

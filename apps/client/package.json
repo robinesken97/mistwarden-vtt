@@ -13,10 +13,12 @@
 	"dependencies": {
 		"@mistwarden/protocol": "^0.0.0",
 		"clipper2-ts": "^2.0.1",
-		"pixi.js": "^8.22.0"
+		"pixi.js": "^8.22.0",
+		"three": "^0.187.0"
 	},
 	"devDependencies": {
 		"@mistwarden/server": "^0.0.0",
+		"@types/three": "^0.187.0",
 		"vite": "^8.3.5"
 	}
 }
