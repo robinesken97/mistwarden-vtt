@@ -12,4 +12,5 @@ export const ICONS = {
 	redo: ["M16 6l4 4-4 4M20 10H9a5 5 0 000 10h3"],
 	close: ["M6 6l12 12M18 6L6 18"],
 	chevron: ["M6 9l6 6 6-6"],
+	check: ["M5 12l5 5 9-10"],
 };

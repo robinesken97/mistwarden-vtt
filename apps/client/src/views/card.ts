@@ -1,6 +1,8 @@
 // Schwebende Karte über der Spielfläche für Notizen und Handouts: eine zur Zeit,
 // schließt per Knopf, Escape oder Tipp neben die Karte.
-import { button, h } from "../dom.ts";
+import { h, iconButton } from "../dom.ts";
+import { t } from "../i18n.ts";
+import { ICONS } from "../icons.ts";
 
 export interface Card {
 	el: HTMLElement;
@@ -20,7 +22,7 @@ export function createCard(): Card {
 		h(
 			"div",
 			{ className: "card-close" },
-			button("Schließen", () => hide(), "secondary"),
+			iconButton(ICONS.close, t("panel.close"), () => hide(), false),
 		),
 		body,
 	);
