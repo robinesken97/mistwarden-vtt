@@ -206,14 +206,14 @@ export function createTokenTools(ctx: TokenToolsContext) {
 	}
 
 	// --- HUD: Einrasten ---
-	const snapButton = iconButton(ICONS.check, "Einrasten", () => {
+	const snapButton = iconButton(ICONS.check, t("tool.snap"), () => {
 		snapping = !snapping;
 		snapButton.setAttribute("aria-pressed", String(snapping));
 		ctx.snapChanged();
 	});
 	snapButton.classList.add("toggle");
 	snapButton.setAttribute("aria-pressed", "true");
-	snapButton.title = "Am Laptop: Alt-Taste beim Loslassen setzt frei.";
+	snapButton.title = t("snap.hint");
 
 	// --- Auswahlleiste ---
 	const barName = h("strong", { className: "bar-name" });
@@ -222,7 +222,7 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		sizeSelect.append(
 			h("option", {
 				value: String(s),
-				textContent: `${s} Feld${s === 1 ? "" : "er"}`,
+				textContent: t(s === 1 ? "token.sizeOne" : "token.sizeMany", { n: s }),
 			}),
 		);
 	}
@@ -263,7 +263,9 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		if (
 			!e ||
 			!(await confirmDialog(
-				t("token.deleteConfirm", { name: tokenData(e).name || "Token" }),
+				t("token.deleteConfirm", {
+					name: tokenData(e).name || t("token.token"),
+				}),
 				t("common.delete"),
 			))
 		)
@@ -272,16 +274,16 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		ctx.run({ op: "delete", kind: "token", id: e.id });
 		ctx.changed();
 	};
-	const hiddenSwitch = menuSwitch("Verstecken", toggleHidden);
-	const propSwitch = menuSwitch("Prop (unter Tokens)", toggleLayer);
+	const hiddenSwitch = menuSwitch(t("token.hide"), toggleHidden);
+	const propSwitch = menuSwitch(t("token.prop"), toggleLayer);
 	/** Zeile „Drehen“: links und rechts herum um `deg` Grad. */
 	const rotateRow = (deg: number) =>
 		menuRow(
-			`Drehen ${deg}°`,
+			t("token.rotate", { deg }),
 			...[-deg, deg].map((d) =>
 				iconButton(
 					d < 0 ? ICONS.rotateLeft : ICONS.rotateRight,
-					`${deg}° nach ${d < 0 ? "links" : "rechts"} drehen`,
+					t(d < 0 ? "token.rotateLeft" : "token.rotateRight", { deg }),
 					() => rotate(d),
 					false,
 				),
@@ -293,14 +295,14 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		rotateRow(45),
 		...(isGm
 			? [
-					menuSelect("Größe", sizeSelect),
-					menuSelect("Besitzer", ownerSelect),
+					menuSelect(t("token.size"), sizeSelect),
+					menuSelect(t("token.owner"), ownerSelect),
 					menuDivider(),
 					hiddenSwitch.el,
 					propSwitch.el,
 					menuDivider(),
-					menuItem("Umbenennen", () => void rename()),
-					menuItem("Löschen", () => void remove(), true),
+					menuItem(t("common.rename"), () => void rename()),
+					menuItem(t("common.delete"), () => void remove(), true),
 				]
 			: []),
 	]);
@@ -308,18 +310,18 @@ export function createTokenTools(ctx: TokenToolsContext) {
 	// --- GM: Tokens anlegen ---
 	const layerSelect = h("select");
 	layerSelect.append(
-		h("option", { value: "tokens", textContent: "als Token" }),
-		h("option", { value: "props", textContent: "als Prop" }),
+		h("option", { value: "tokens", textContent: t("token.asToken") }),
+		h("option", { value: "props", textContent: t("token.asProp") }),
 	);
 	const tokenFile = h("input", {
 		type: "file",
 		accept: "image/png,image/jpeg,image/webp",
 		hidden: true,
 	});
-	const uploadButton = button("Hochladen …", () => tokenFile.click());
+	const uploadButton = button(t("common.upload"), () => tokenFile.click());
 	const assetSelect = h("select");
 	const placeButton = button(
-		"Platzieren",
+		t("token.place"),
 		() => {
 			const asset = tokenAssets.find((a) => a.id === assetSelect.value);
 			if (asset) void place(asset, layerSelect.value as TokenData["layer"]);
@@ -341,10 +343,10 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		if (!file || !ctx.gmToken) return;
 		uploadButton.disabled = true;
 		status.hidden = false;
-		status.textContent = `„${file.name}“ wird hochgeladen …`;
+		status.textContent = t("common.uploading", { file: file.name });
 		try {
 			const asset = await api.uploadAsset(ctx.gmToken, file, "token");
-			status.textContent = "Token platziert – in der Mitte der Ansicht.";
+			status.textContent = t("token.placed");
 			await refreshAssets();
 			await place(asset, layerSelect.value as TokenData["layer"]);
 		} catch (err) {
@@ -371,7 +373,7 @@ export function createTokenTools(ctx: TokenToolsContext) {
 				: [
 						h("option", {
 							value: "",
-							textContent: "– noch keine Token-Bilder –",
+							textContent: t("token.noImages"),
 						}),
 					]),
 		);
@@ -381,17 +383,13 @@ export function createTokenTools(ctx: TokenToolsContext) {
 	const gmSection = h(
 		"div",
 		{},
-		h("h2", {}, "Tokens"),
+		h("h2", {}, t("group.tokens")),
 		h("div", { className: "row" }, layerSelect, uploadButton),
 		tokenFile,
 		h("div", { className: "row" }, assetSelect, placeButton),
 		status,
-		h("label", {}, propsLock, "Props sperren"),
-		h(
-			"p",
-			{ className: "hint" },
-			"Neue Tokens erscheinen in der Mitte der Ansicht. Antippen wählt aus, ziehen verschiebt. Besitzer dürfen ihre Tokens selbst bewegen und drehen.",
-		),
+		h("label", {}, propsLock, t("token.lockProps")),
+		h("p", { className: "hint" }, t("token.help")),
 	);
 	if (isGm) void refreshAssets();
 
@@ -406,26 +404,27 @@ export function createTokenTools(ctx: TokenToolsContext) {
 		const mine = sceneTokens().some((t) => canMove(t));
 		snapButton.hidden = !scene || !mine;
 		if (!e || selectedId === null) return;
-		const t = tokenData(e);
-		barName.textContent = t.name || (t.layer === "props" ? "Prop" : "Token");
+		const d = tokenData(e);
+		barName.textContent =
+			d.name || t(d.layer === "props" ? "token.propName" : "token.token");
 		if (!isGm) return;
 		if (document.activeElement !== sizeSelect)
-			sizeSelect.value = String(t.size);
+			sizeSelect.value = String(d.size);
 		const players = [...ctx.conn.entities.values()].filter(
 			(p) => p.kind === "player",
 		);
 		ownerSelect.replaceChildren(
-			h("option", { value: "", textContent: "nur GM" }),
+			h("option", { value: "", textContent: t("common.gmOnlyValue") }),
 			...players.map((p) =>
 				h("option", {
 					value: p.id,
 					textContent: (p.data as PlayerData).name,
-					selected: p.id === t.ownerId,
+					selected: p.id === d.ownerId,
 				}),
 			),
 		);
-		hiddenSwitch.set(t.hidden);
-		propSwitch.set(t.layer === "props");
+		hiddenSwitch.set(d.hidden);
+		propSwitch.set(d.layer === "props");
 	}
 
 	return {

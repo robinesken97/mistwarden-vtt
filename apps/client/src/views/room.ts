@@ -14,7 +14,7 @@ import {
 } from "@mistwarden/protocol";
 import { ApiError, api, assetMeta, errorText, playerLink } from "../api.ts";
 import { button, h, icon, iconButton } from "../dom.ts";
-import { t } from "../i18n.ts";
+import { type TextKey, t } from "../i18n.ts";
 import { ICONS } from "../icons.ts";
 import {
 	ActionRejected,
@@ -43,24 +43,11 @@ import { createTableTools } from "./table.ts";
 import { createTokenTools } from "./tokens.ts";
 import { activeTool, createToolGroups, type ToolGroup } from "./toolgroups.ts";
 
-const statusLabel = {
-	connecting: "Verbinde …",
-	online: "Verbunden",
-	offline: "Getrennt – neuer Versuch läuft",
-	unauthorized: "Kein Zugang",
-} as const;
-
-const rejectText = {
-	invalid: "Nicht möglich (z. B. aktive Szene löschen oder verbergen).",
-	forbidden: "Keine Berechtigung.",
-	not_found: "Nicht gefunden.",
-	exists: "Existiert bereits.",
-} as const;
-
-const gridTypes: [GridData["type"], string][] = [
-	["square", "Quadrate"],
-	["hexPointy", "Hex spitz"],
-	["hexFlat", "Hex flach"],
+// Schlüssel statt Texte: übersetzt wird erst beim Anzeigen, in der dann gewählten Sprache.
+const gridTypes: [GridData["type"], TextKey][] = [
+	["square", "grid.square"],
+	["hexPointy", "grid.hexPointy"],
+	["hexFlat", "grid.hexFlat"],
 ];
 
 /** Verzögerung, bevor Grid-Änderungen gesendet werden (Vorschau ist sofort sichtbar). */
@@ -102,7 +89,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const statusText = h("span", { className: "hud-status" });
 	const sceneText = h("span", { className: "hud-scene" });
 	const backToActive = button(
-		"Zur aktiven Szene",
+		t("scene.backToActive"),
 		() => {
 			viewedSceneId = null;
 			render();
@@ -131,7 +118,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const fogPanel = h(
 		"aside",
 		{ className: "panel", hidden: true },
-		panelHead("Fog-Flächen", () => panels.close()),
+		panelHead(t("fog.areas"), () => panels.close()),
 	);
 	const handoutPanel = h(
 		"aside",
@@ -181,7 +168,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const players = h("ul", { className: "players" });
 	const gmPanel = h("div");
 	const leave = isGm
-		? button("Zur Raumliste", () => navigate("/"), "secondary")
+		? button(t("room.toRooms"), () => navigate("/"), "secondary")
 		: button(
 				t("room.leave"),
 				async () => {
@@ -203,7 +190,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		{ className: "panel", hidden: true },
 		panelHead(t("menu.title"), () => panels.close()),
 		roleText,
-		h("h2", {}, "Spieler"),
+		h("h2", {}, t("menu.players")),
 		players,
 		gmPanel,
 		deviceRow,
@@ -242,7 +229,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 	const showActionError = (err: unknown) =>
 		error.show(
-			err instanceof ActionRejected ? rejectText[err.reason] : String(err),
+			err instanceof ActionRejected ? t(`reject.${err.reason}`) : String(err),
 		);
 
 	// --- Rückgängig/Wiederholen (eigene Änderungen auf diesem Gerät) ---
@@ -253,8 +240,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	const undoText: Record<UndoResult, string | null> = {
 		done: null,
 		empty: null,
-		stale: "Nicht mehr möglich: Das Objekt wurde inzwischen geändert.",
-		failed: "Rückgängig/Wiederholen ist fehlgeschlagen.",
+		stale: t("history.stale"),
+		failed: t("history.failed"),
 	};
 	async function step(direction: "undo" | "redo"): Promise<void> {
 		error.show(null);
@@ -383,12 +370,15 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		card,
 		...(isGm ? { openPanel: () => panels.toggle(handoutPanel) } : {}),
 	});
-	const fogListButton = iconButton(ICONS.list, "Flächen", () =>
+	const fogListButton = iconButton(ICONS.list, t("fog.list"), () =>
 		panels.toggle(fogPanel),
 	);
-	const noteButton = iconButton(ICONS.note, "Notiz", () => void notes.create());
-	noteButton.title =
-		"Neue Notiz in der Bildmitte, zunächst nur für dich sichtbar";
+	const noteButton = iconButton(
+		ICONS.note,
+		t("note.title"),
+		() => void notes.create(),
+	);
+	noteButton.title = t("note.newHint");
 
 	hud
 		.querySelector(".hud-slot")
@@ -596,14 +586,17 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 
 	// --- GM: Szenen ---
 	const scenes = h("ul");
-	const sceneName = h("input", { type: "text", placeholder: "Neue Szene" });
+	const sceneName = h("input", {
+		type: "text",
+		placeholder: t("scene.newPlaceholder"),
+	});
 	const sceneHidden = h("input", { type: "checkbox" });
 	const sceneForm = h(
 		"form",
 		{},
 		sceneName,
-		h("label", {}, sceneHidden, "Nur GM"),
-		h("button", { type: "submit" }, "Anlegen"),
+		h("label", {}, sceneHidden, t("common.gmOnly")),
+		h("button", { type: "submit" }, t("common.create")),
 	);
 	sceneForm.addEventListener("submit", (e) => {
 		e.preventDefault();
@@ -629,26 +622,32 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			{ className: "name" },
 			data.name,
 			active ? h("span", { className: "badge" }, "aktiv") : "",
-			hidden ? h("span", { className: "badge muted" }, "nur GM") : "",
+			hidden
+				? h("span", { className: "badge muted" }, t("common.gmOnlyValue"))
+				: "",
 			viewed && !active
 				? h("span", { className: "badge muted" }, "angesehen")
 				: "",
 		);
 		const view = button(
-			"Ansehen",
+			t("scene.view"),
 			() => {
 				viewedSceneId = scene.id;
 				render();
 			},
 			"secondary",
 		);
-		const renameButton = button("Umbenennen", () => rename(scene), "secondary");
+		const renameButton = button(
+			t("common.rename"),
+			() => rename(scene),
+			"secondary",
+		);
 		if (active) return h("li", {}, name, viewed ? "" : view, renameButton);
 		return h(
 			"li",
 			{},
 			name,
-			button("Aktivieren", async () => {
+			button(t("scene.activate"), async () => {
 				// Die aktive Szene sehen alle: verdeckte Szene vorher aufdecken.
 				if (hidden) {
 					await run({
@@ -671,7 +670,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			}),
 			viewed ? "" : view,
 			button(
-				hidden ? "Aufdecken" : "Verbergen",
+				hidden ? t("scene.reveal") : t("scene.hide"),
 				() =>
 					run({
 						op: "update",
@@ -683,7 +682,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			),
 			renameButton,
 			button(
-				"Löschen",
+				t("common.delete"),
 				async () => {
 					if (
 						await confirmDialog(
@@ -717,7 +716,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		accept: "image/png,image/jpeg,image/webp",
 		hidden: true,
 	});
-	const uploadButton = button("Hochladen …", () => mapFile.click());
+	const uploadButton = button(t("common.upload"), () => mapFile.click());
 	const assetSelect = h("select");
 	const mapStatus = h("p", { className: "hint", hidden: true });
 	let assetList: AssetMeta[] = [];
@@ -737,7 +736,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	function renderAssetSelect(): void {
 		const current = (displayedScene()?.data as SceneData | undefined)?.map;
 		assetSelect.replaceChildren(
-			h("option", { value: "", textContent: "– vorhandene Karte wählen –" }),
+			h("option", { value: "", textContent: t("map.pick") }),
 			...assetList.map((a) =>
 				h("option", {
 					value: a.id,
@@ -767,10 +766,14 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		const sceneId = displayedScene()?.id;
 		uploadButton.disabled = true;
 		mapStatus.hidden = false;
-		mapStatus.textContent = `„${file.name}“ wird hochgeladen und verarbeitet …`;
+		mapStatus.textContent = t("map.uploading", { file: file.name });
 		try {
 			const meta = await api.uploadAsset(gmToken, file);
-			mapStatus.textContent = `Fertig: ${meta.width}×${meta.height} Pixel, ${meta.levels} Stufen.`;
+			mapStatus.textContent = t("map.done", {
+				width: meta.width,
+				height: meta.height,
+				levels: meta.levels,
+			});
 			await refreshAssets();
 			if (sceneId) {
 				run({
@@ -789,12 +792,12 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 	assetSelect.addEventListener("change", () => {
 		if (assetSelect.value) setMap(assetSelect.value);
 	});
-	const removeMap = button("Entfernen", () => setMap(null), "secondary");
+	const removeMap = button(t("common.remove"), () => setMap(null), "secondary");
 
 	// --- GM: Grid der angesehenen Szene ---
 	const gridType = h("select");
 	for (const [value, label] of gridTypes) {
-		gridType.append(h("option", { value, textContent: label }));
+		gridType.append(h("option", { value, textContent: t(label) }));
 	}
 	const gridVisible = h("input", { type: "checkbox" });
 	const numberField = (step: number) =>
@@ -892,12 +895,12 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		"div",
 		{ className: "link-box" },
 		linkInput,
-		button("Kopieren", async () => {
+		button(t("link.copy"), async () => {
 			linkInput.select();
 			await navigator.clipboard?.writeText(linkInput.value).catch(() => {});
 		}),
 		button(
-			"Neu erzeugen",
+			t("link.regenerate"),
 			async () => {
 				if (!gmToken) return;
 				if (
@@ -929,21 +932,17 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			mapFile,
 			assetSelect,
 			mapStatus,
-			h("h3", {}, "Grid"),
+			h("h3", {}, t("grid.title")),
 			h(
 				"div",
 				{ className: "grid-form" },
-				h("label", {}, "Art ", gridType),
-				h("label", {}, gridVisible, "Grid anzeigen"),
-				h("label", {}, "Größe (px) ", stepper(gridSize, 1)),
-				h("label", {}, "Versatz X ", stepper(gridOffsetX, 1)),
-				h("label", {}, "Versatz Y ", stepper(gridOffsetY, 1)),
+				h("label", {}, t("grid.type"), gridType),
+				h("label", {}, gridVisible, t("grid.show")),
+				h("label", {}, t("grid.size"), stepper(gridSize, 1)),
+				h("label", {}, t("grid.offsetX"), stepper(gridOffsetX, 1)),
+				h("label", {}, t("grid.offsetY"), stepper(gridOffsetY, 1)),
 			),
-			h(
-				"p",
-				{ className: "hint" },
-				"Größe und Versatz in Kartenpixeln. Die Karte bleibt fest, das Grid wird an sie angepasst.",
-			),
+			h("p", { className: "hint" }, t("grid.hint")),
 			table.gmMeasureSection,
 		);
 		// Der Panel-Kopf trägt den Titel schon.
@@ -954,13 +953,9 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		handouts.gmSection.querySelector("h2")?.remove();
 		handoutPanel.append(handouts.gmSection);
 		gmPanel.append(
-			h("h2", {}, "Spieler-Link"),
+			h("h2", {}, t("link.title")),
 			linkBox,
-			h(
-				"p",
-				{ className: "hint" },
-				"Diesen Link an die Spieler schicken. Sie treten mit ihrem Namen bei, ohne Account.",
-			),
+			h("p", { className: "hint" }, t("link.hint")),
 		);
 		api
 			.rooms(gmToken)
@@ -995,7 +990,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		})
 		.catch((err: unknown) => {
 			stageMessage.hidden = false;
-			stageMessage.textContent = `Spielfläche nicht verfügbar: ${String(err)}`;
+			stageMessage.textContent = t("stage.unavailable", { error: String(err) });
 		});
 
 	function updateStage(): void {
@@ -1026,7 +1021,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 			.catch(() => {
 				if (request !== stageRequest) return;
 				stage?.setScene({ id: scene.id, map: null, grid, measure });
-				error.show("Kartenbild nicht gefunden.");
+				error.show(t("map.notFound"));
 			});
 	}
 
@@ -1037,8 +1032,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		const playerCount = entitiesOf("player").length;
 		statusText.textContent =
 			isGm && conn.status === "online"
-				? `${statusLabel.online} · ${t("status.players", { count: playerCount })}`
-				: statusLabel[conn.status];
+				? `${t("status.online")} · ${t("status.players", { count: playerCount })}`
+				: t(`status.${conn.status}`);
 		title.textContent = conn.roomName ?? "Mistwarden";
 		document.title = conn.roomName
 			? `${conn.roomName} – Mistwarden`
@@ -1053,8 +1048,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				: undefined;
 		roleText.textContent = id
 			? id.role === "gm"
-				? "Du bist die Spielleitung."
-				: `Du spielst als ${me?.name ?? "…"}.`
+				? t("room.youAreGm")
+				: t("room.youPlayAs", { name: me?.name ?? "…" })
 			: "";
 
 		if (viewedSceneId && !sceneById(viewedSceneId)) viewedSceneId = null;
@@ -1063,8 +1058,8 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		const shownName = shown ? (shown.data as SceneData).name : "–";
 		const previewing = shown !== undefined && shown.id !== activeId;
 		sceneText.textContent = previewing
-			? `Vorschau: ${shownName} (Spieler sehen eine andere Szene)`
-			: `Szene: ${shownName}`;
+			? t("scene.preview", { name: shownName })
+			: t("scene.current", { name: shownName });
 		sceneText.classList.toggle("preview", previewing);
 		backToActive.hidden = !previewing;
 
@@ -1077,7 +1072,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 		players.replaceChildren(
 			...(playerItems.length
 				? playerItems
-				: [h("li", { className: "hint" }, "Noch niemand beigetreten.")]),
+				: [h("li", { className: "hint" }, t("menu.noPlayers"))]),
 		);
 
 		if (isGm) {
@@ -1086,12 +1081,12 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 					sceneItem(s, s.id === activeId, s.id === shown?.id),
 				),
 			);
-			settingsTitle.textContent = `Karte – ${shownName}`;
+			settingsTitle.textContent = t("map.title", { name: shownName });
 			const mapId = (shown?.data as SceneData | undefined)?.map ?? null;
 			const asset = assetList.find((a) => a.id === mapId);
 			mapName.textContent = mapId
-				? (asset?.name ?? "Karte gesetzt")
-				: "Keine Karte – nur Grid.";
+				? (asset?.name ?? t("map.set"))
+				: t("map.none");
 			removeMap.hidden = !mapId;
 			renderAssetSelect();
 			syncGridInputs();
@@ -1112,11 +1107,7 @@ export function roomView(root: HTMLElement, roomId: string): () => void {
 				cleanup();
 				root.replaceChildren(
 					h("h1", {}, "Mistwarden"),
-					h(
-						"p",
-						{},
-						"Deine Sitzung ist nicht mehr gültig. Bitte über den Spieler-Link neu beitreten.",
-					),
+					h("p", {}, t("room.sessionInvalid")),
 				);
 			}
 		}

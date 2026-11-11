@@ -19,7 +19,7 @@ import {
 import { changeDie, dieCount } from "../dice-pool.ts";
 import { button, h, iconButton } from "../dom.ts";
 import { simplifyStroke } from "../draw/shapes.ts";
-import { t } from "../i18n.ts";
+import { type TextKey, t } from "../i18n.ts";
 import { ICONS } from "../icons.ts";
 import { ActionRejected, type SyncConnection } from "../net/connection.ts";
 import type {
@@ -56,17 +56,17 @@ type ToolName = "measure" | "draw" | "erase";
 type Shape = DrawingData["shape"];
 
 /** Strichbreiten als Anteil der Feldgröße. */
-const WIDTHS: [number, string][] = [
-	[0.04, "Dünn"],
-	[0.08, "Mittel"],
-	[0.16, "Dick"],
+const WIDTHS: [number, TextKey][] = [
+	[0.04, "draw.thin"],
+	[0.08, "draw.medium"],
+	[0.16, "draw.thick"],
 ];
 /** Farben, aus denen die GM wählt; Spieler zeichnen immer in ihrer eigenen Farbe. */
 const GM_PALETTE = [GM_COLOR, "#e04848", "#3fa7e0", "#5cc85c", "#f0f0f0"];
-const DIAGONALS: [MeasureData["diagonal"], string][] = [
-	["equal", "Immer 1 Feld"],
-	["alternating", "Wechsel 1-2-1"],
-	["euclidean", "Luftlinie"],
+const DIAGONALS: [MeasureData["diagonal"], TextKey][] = [
+	["equal", "measure.equal"],
+	["alternating", "measure.alternating"],
+	["euclidean", "measure.euclidean"],
 ];
 const QUICK_DICE = [4, 6, 8, 10, 12, 20, 100];
 const ROLL_TOAST_MS = 5000;
@@ -92,7 +92,7 @@ export function createTableTools(ctx: TableToolsContext) {
 	function playerName(id: string | null): string {
 		if (id === null) return "GM";
 		const p = ctx.conn.entities.get(`player:${id}`);
-		return (p?.data as PlayerData | undefined)?.name ?? "Unbekannt";
+		return (p?.data as PlayerData | undefined)?.name ?? t("player.unknown");
 	}
 
 	function myColor(): string {
@@ -246,8 +246,8 @@ export function createTableTools(ctx: TableToolsContext) {
 			rollError.hidden = false;
 			rollError.textContent =
 				err instanceof ActionRejected
-					? "Wurf abgelehnt."
-					: `Wurf fehlgeschlagen: ${String(err)}`;
+					? t("dice.rejected")
+					: t("dice.failed", { error: String(err) });
 		}
 	}
 
@@ -270,7 +270,7 @@ export function createTableTools(ctx: TableToolsContext) {
 			}
 			measureLabel.hidden = false;
 			measureLabel.textContent = `${formatNumber(result.cells)} ${
-				result.cells === 1 ? "Feld" : "Felder"
+				result.cells === 1 ? t("measure.cell") : t("measure.cells")
 			} · ${formatNumber(result.distance)} ${result.unit}`;
 			measureLabel.style.transform = `translate(${Math.round(result.screen.x + 14)}px, ${Math.round(result.screen.y - 34)}px)`;
 		},
@@ -289,7 +289,7 @@ export function createTableTools(ctx: TableToolsContext) {
 	const widthGroup = h("span", { className: "bar-group segmented" });
 	for (const [factor, label] of WIDTHS) {
 		const b = button(
-			label,
+			t(label),
 			() => {
 				widthFactor = factor;
 				setTool("draw");
@@ -312,7 +312,7 @@ export function createTableTools(ctx: TableToolsContext) {
 		);
 		b.className = "swatch";
 		b.style.setProperty("--swatch", color);
-		b.title = `Farbe ${color}`;
+		b.title = t("draw.color", { color });
 		colorButtons.set(color, b);
 		colorGroup.append(b);
 	}
@@ -323,15 +323,15 @@ export function createTableTools(ctx: TableToolsContext) {
 		{ className: "selection-bar", hidden: true },
 		widthGroup,
 		colorGroup,
-		button("Meine löschen", () => eraseMany(false), "secondary"),
+		button(t("draw.clearOwn"), () => eraseMany(false), "secondary"),
 		...(ctx.isGm
-			? [button("Alle löschen", () => eraseMany(true), "secondary")]
+			? [button(t("draw.clearAll"), () => eraseMany(true), "secondary")]
 			: []),
 	);
 	const measureBar = h(
 		"div",
 		{ className: "selection-bar", hidden: true },
-		h("span", { className: "hint" }, "Ziehen misst von Feld zu Feld"),
+		h("span", { className: "hint" }, t("measure.hint")),
 	);
 	const logList = h("ol", { className: "roll-log" });
 	const formulaInput = h("input", {
@@ -478,7 +478,7 @@ export function createTableTools(ctx: TableToolsContext) {
 	function showToast(e: Entity): void {
 		const r = e.data as RollData;
 		toast.textContent = `${playerName(r.authorId)}: ${r.formula} = ${r.total}${
-			r.hidden ? " (verdeckt)" : ""
+			r.hidden ? ` (${t("dice.hiddenBadge")})` : ""
 		}`;
 		toast.hidden = false;
 		clearTimeout(toastTimer);
@@ -497,7 +497,7 @@ export function createTableTools(ctx: TableToolsContext) {
 	const unit = h("input", { type: "text", maxLength: 8, className: "num" });
 	const diagonal = h("select");
 	for (const [value, label] of DIAGONALS) {
-		diagonal.append(h("option", { value, textContent: label }));
+		diagonal.append(h("option", { value, textContent: t(label) }));
 	}
 	let measureDraft: { sceneId: string; measure: MeasureData } | null = null;
 
@@ -546,19 +546,15 @@ export function createTableTools(ctx: TableToolsContext) {
 	const gmMeasureSection = h(
 		"div",
 		{},
-		h("h3", {}, "Messen"),
+		h("h3", {}, t("tool.measure")),
 		h(
 			"div",
 			{ className: "grid-form" },
-			h("label", {}, "Pro Feld ", perCell),
-			h("label", {}, "Einheit ", unit),
-			h("label", {}, "Diagonalen ", diagonal),
+			h("label", {}, t("measure.perCell"), perCell),
+			h("label", {}, t("measure.unit"), unit),
+			h("label", {}, t("measure.diagonals"), diagonal),
 		),
-		h(
-			"p",
-			{ className: "hint" },
-			"Gilt für Quadrat-Grids; auf Hex-Grids zählt immer die Hex-Distanz.",
-		),
+		h("p", { className: "hint" }, t("measure.gridHint")),
 	);
 
 	// --- Darstellung ---
@@ -629,5 +625,7 @@ function termNodes(t: RollTerm, index: number): (Node | string)[] {
 }
 
 function formatNumber(n: number): string {
-	return n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
+	return n.toLocaleString(document.documentElement.lang, {
+		maximumFractionDigits: 1,
+	});
 }
