@@ -9,8 +9,9 @@ import type {
 	PlayerData,
 } from "@mistwarden/protocol";
 import { api, assetMeta, errorText } from "../api.ts";
-import { button, h } from "../dom.ts";
+import { button, h, iconButton } from "../dom.ts";
 import { t } from "../i18n.ts";
+import { ICONS } from "../icons.ts";
 import type { SyncConnection } from "../net/connection.ts";
 import { tilesInView } from "../render/tiles.ts";
 import { confirmDialog } from "../ui.ts";
@@ -310,7 +311,9 @@ export function createHandoutTools(ctx: HandoutToolsContext) {
 		gmList,
 		button("Neues Handout", () => edit(null)),
 	);
-	const hudButton = button("Handouts", () => list(), "secondary");
+	const hudButton = iconButton(ICONS.handout, t("handouts.title"), () =>
+		list(),
+	);
 
 	function render(): void {
 		const all = handouts();

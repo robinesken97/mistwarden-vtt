@@ -56,3 +56,24 @@ export function icon(paths: string[], size = 24): SVGSVGElement {
 	}
 	return svg;
 }
+
+/**
+ * Knopf mit Symbol. `label` ist immer der Name für Screenreader; mit `showLabel`
+ * steht er auch sichtbar neben bzw. unter dem Symbol.
+ */
+export function iconButton(
+	paths: string[],
+	label: string,
+	onClick: () => void,
+	showLabel = true,
+): HTMLButtonElement {
+	const el = button("", onClick, "secondary");
+	el.classList.add("icon-button");
+	el.append(icon(paths));
+	if (showLabel) el.append(h("span", {}, label));
+	else {
+		el.setAttribute("aria-label", label);
+		el.title = label;
+	}
+	return el;
+}

@@ -346,7 +346,8 @@ main.room-mode {
 }
 
 .hud button {
-	min-height: 40px;
+	min-width: 44px;
+	min-height: 44px;
 }
 
 .panel {
@@ -554,7 +555,7 @@ input.num {
 /* --- Werkzeugleiste: unten in Daumenhöhe, am Laptop links --- */
 
 .room {
-	--bar-bottom: 3.75rem;
+	--bar-bottom: 4.75rem;
 }
 
 .toolbar {
@@ -1142,4 +1143,41 @@ button.swatch {
 	height: 0.5rem;
 	background: var(--accent);
 	transform: rotate(45deg);
+}
+
+/* --- Knöpfe mit Symbol: Kopfzeile (Symbol neben Text) und Werkzeugleiste (Symbol über Text) --- */
+
+button.icon-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.35rem;
+	border-color: transparent;
+}
+
+button.icon-button.active {
+	background: var(--accent);
+	color: var(--on-accent);
+}
+
+.toolbar .icon-button {
+	flex-direction: column;
+	gap: 0.15rem;
+	min-width: 4.25rem;
+	min-height: 3.5rem;
+	padding: 0 0.4rem;
+	font-size: 0.7rem;
+	border-radius: 12px;
+}
+
+/* Schmale Geräte (iPad hochkant): in der Kopfzeile nur Symbole; der Text bleibt für Screenreader. */
+@media (max-width: 52rem) {
+	.hud .icon-button span {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
 }
