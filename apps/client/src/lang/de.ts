@@ -96,4 +96,8 @@ export const de = {
 	"history.redo": "Wiederholen",
 	"history.undoHint": "Rückgängig (Strg/⌘+Z)",
 	"history.redoHint": "Wiederholen (Strg/⌘+Umschalt+Z)",
+	"dice.placeholder": "z. B. 1d20+5 oder 4d6kh3",
+	"dice.roll": "Würfeln",
+	"dice.hidden": "Verdeckt würfeln (nur du siehst den Wurf)",
+	"dice.less": "Einen {die} weniger",
 } as const;
